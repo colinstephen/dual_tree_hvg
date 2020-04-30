@@ -4,35 +4,7 @@
 import numpy as np
 
 def linear_hvg(X):
-    """
-    Main method for building the HVG from a sequence of values.
-    O(n) algorithm iterates the sequence X, adding edges forward from
-    earlier points that are horizontally visible as it goes.
-    """
-    
-    # Initialize edge and visible sets
-    E = []
-    visible = []
-
-    """
-    Iteration to add new edges and make now-blocked vertices invisible.
-    The nested while loop here is only run O(n) times in total, since the
-    final graph has O(n) edges.
-    """
-    for v in np.arange(len(X)):
-        while len(visible) > 0:
-            u, top, bottom = visible[-1]
-            if top <= X[v]:
-                E.append((u,v,top-bottom))
-                visible = visible[:-1]
-                if top == X[v]:
-                    break
-            else:
-                E.append((u,v,X[v]-bottom))
-                visible[-1] = (u, top, X[v])
-                break
-        # update visibility with new node
-        visible.append((v,X[v],0))
+    _, E, _ = batch_hvg(X)
     return E
 
 def batch_hvg(X, finite_lower_bound=0):
