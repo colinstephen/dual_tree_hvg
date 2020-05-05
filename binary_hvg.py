@@ -136,7 +136,3 @@ def merge(list_roots_in): #[node01, node02]
     return(Node(value = root.value, data = root.data, left = merge(smaller), right = merge(bigger)))
 
 
-def merge_two(node1, node2):
-  return merge([node1, node2])
-
-

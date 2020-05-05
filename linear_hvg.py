@@ -26,6 +26,7 @@ import numpy as np
 class HVG:
   def __init__(self):
     self.X = []
+    self.length = 0
     self.E = []
     self.vis_p = []
     self.vis_f = []
@@ -33,12 +34,13 @@ class HVG:
     self.finite_lower_bound = -1e6
 
   def __len__(self):
-    return len(self.X)
+    return self.length
 
   def add_one(self, x):
 
-    v = len(self.X)
+    v = self.length
     self.X += [x]
+    self.length += 1
     # we now have self.X[v] = x
         
     if x > self.max_val:
