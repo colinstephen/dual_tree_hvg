@@ -31,10 +31,12 @@ class HVG:
     self.vis_p = []
     self.vis_f = []
     self.max_val = -np.inf
-    self.finite_lower_bound = -1e6
+    self.default_neighbour_weight = np.inf
+
 
   def __len__(self):
     return self.length
+
 
   def add_one(self, x):
 
@@ -44,26 +46,34 @@ class HVG:
     # we now have self.X[v] = x
         
     if x > self.max_val:
-      self.vis_p += [[v, self.max_val]]
+      self.vis_p += [v]
       self.max_val = x
+
+    h = None  # current blocking value
 
     while self.vis_f:
       
-      u, bottom = self.vis_f[-1]
-      bottom = bottom or self.finite_lower_bound
+      u = self.vis_f[-1]
       
       if self.X[u] <= self.X[v]:
-        self.E += [[u, v, self.X[u]-bottom]]
+        if v == u+1:
+          self.E += [[u, v, self.default_neighbour_weight]]
+        else:
+          self.E += [[u, v, self.X[u]-h]]
         del self.vis_f[-1]
         if self.X[u] == self.X[v]:
           break
+        h = self.X[u]
 
       else:
-        self.E += [[u, v, self.X[v]-bottom]]
-        self.vis_f[-1][1] = self.X[v]
+        if v == u+1:
+          self.E += [[u, v, self.default_neighbour_weight]]
+        else:
+          self.E += [[u, v, self.X[v]-h]]
         break
 
-    self.vis_f += [[v, None]]
+    self.vis_f += [v]
+
 
   def add_batch(self, batch):
     for x in batch:
@@ -73,100 +83,23 @@ class HVG:
     self.add_batch(other.X)
 
   def hvg(self):
-    # return a generator for the graph
+    # return a generator for the graph edges
     return ((u, v) for (u,v,w) in self.E)
 
 
-def hvg(X, include_weights=True):
-  '''
-  Compute the HVG of a time series X in O(n) time.
+# TODO: implement the merge as an efficient method in the HVG class above
+"""
+IDEA:
 
-  In practice we offload the work to a more general function that keeps track
-  of additional structure. The additional structure is then forgotten.
-  '''
+1. take the leading edge of hvg1 and the trailing edge of hvg2
+2. construct a new time series from the corresponding indices
+3. build its HVG hvg3
+4. add the new edges of hvg3 to the combined edges of hvg1 and hvg2
+5. update the leading or trailing edges with those of hvg3
+"""
 
-  (V, E), (vis_p, vis_f), X = batch_hvg(X)
+def merge(hvg1, hvg2):
 
-  if not include_weights:
-    E = [(u, v) for (u, v, w) in E]
-
-  return (V, E)
-
-
-
-def batch_hvg(X):
-  """
-  Compute the HVG of a time series X in O(n) time.
-
-  In addition, keep track of 'past' and 'future' visible points and any
-  translations made to y-axis values.
-  
-  These data can be used to combine or merge batch HVGs together later.
-  """
-
-  # Adjust the y axis so the minimum value is one.
-  translate = -np.min(X) + 1
-  X = X + translate
-
-  # Initialise the HVG graph
-  V = xrange(len(X))  # vertices
-  E = []              # edges
-  vis_p = []          # vertices in V that can 'see the past' and their max
-                      # preceding value
-  vis_f = []          # vertices in V that can 'see the future' and their max
-                      # succeeding value
-  max_val = -np.inf   # the maximum value processed in the sequence X so far
-
-  # Add vertices sequentially to the HVG by connecting edges back to earlier
-  # visible vertices 
-  for v in V:
-
-    # Check whether we have a new global max
-    if X[v] > max_val:
-      # If so then the vertex v is past-facing above height max_val
-      vis_p.append((v, max_val))
-      max_val = X[v]
-
-    # Check whether/which earlier vertices u can be seen from our new vertex v
-    while len(vis_f) > 0:
-      # keep track of the vertex index u and the lowest height any future vertex
-      # needs to be to see u
-      u, bottom = vis_f[-1]  
-
-      # Check whether u is the rightmost vertex of the HVG so far
-      if bottom == -np.inf:
-        # If it is then to get consistent weights we use a basline
-        bottom = 0
-
-      # Check whether value at v is greater than or equal to value at u
-      if X[u] <= X[v]:
-        # If so then v can see u and u's 'shadow' on v is of height X[u]-bottom
-        E.append((u, v, X[u]-bottom))
-        # Moreover u is now blocked from any further future visibility
-        vis_f = vis_f[:-1]
-
-        # If the value at v was the same as at u then
-        # no additional edges can be added from v to earlier vertices
-        if X[u] == X[v]:
-          break
-
-      else:
-        # The value at u was greater than the value at v. So v sees u
-        # from height 'bottom' up to v's own height
-        E.append((u, v, X[v]-bottom))
-        
-        # v partially blocks u so u's new 'bottom' is the height of v itself
-        vis_f[-1] = (u, X[v])
-        # moreover no further edges can be added
-        break
-
-    # the most recent vertex v is always future-facing
-    vis_f.append((v, -np.inf))
-
-  # Return the graph augmented with data on which vertices are past-facing or
-  # future-facing. Also record by how much the original data were
-  # shifted from their values during the computation.
-  return (V, E), (vis_p, vis_f), X, translate
 
 
 
