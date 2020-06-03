@@ -20,18 +20,25 @@ arbitrary length. Works in worst-case O(n) time.
 
 
 import numpy as np
+from scipy.sparse import dok_matrix
 
 
 
 class HVG:
+  '''
+  Class for the weighted horizontal visibility of a sequence.
+  '''
+
+
   def __init__(self):
-    self.X = []
-    self.length = 0
-    self.E = []
-    self.vis_p = []
-    self.vis_f = []
-    self.max_val = -np.inf
-    self.default_neighbour_weight = np.inf
+    self.X = []  # the actual time series
+    self.length = 0  # update to avoid multiple calls to `len(self.X)`
+    self.E = []  # list of weighted HVG edges [u, v, w]
+    self.vis_p = []  # longest strictly increasing subsequence from self.X[0]
+    self.vis_f = []  # longest strictly decreasing subsequence to self.X[-1] 
+    self.max_val = -np.inf  # update to avoid multiple calls to `max(self.X)`
+    self.neighbour_weight = np.inf  # value of w for edges [u, u+1, w]
+    self._A = None  # upper triangular adjacency matrix corresponding to self.E
 
 
   def __len__(self):
@@ -49,15 +56,13 @@ class HVG:
       self.vis_p += [v]
       self.max_val = x
 
-    h = None  # current blocking value
-
     while self.vis_f:
       
       u = self.vis_f[-1]
       
       if self.X[u] <= self.X[v]:
         if v == u+1:
-          self.E += [[u, v, self.default_neighbour_weight]]
+          self.E += [[u, v, self.neighbour_weight]]
         else:
           self.E += [[u, v, self.X[u]-h]]
         del self.vis_f[-1]
@@ -67,144 +72,88 @@ class HVG:
 
       else:
         if v == u+1:
-          self.E += [[u, v, self.default_neighbour_weight]]
+          self.E += [[u, v, self.neighbour_weight]]
         else:
           self.E += [[u, v, self.X[v]-h]]
         break
 
     self.vis_f += [v]
 
+    return self
+
 
   def add_batch(self, batch):
     for x in batch:
       self.add_one(x)
 
-  def merge(self, other):
-    self.add_batch(other.X)
-
-  def hvg(self):
-    # return a generator for the graph edges
-    return ((u, v) for (u,v,w) in self.E)
+    return self
 
 
-# TODO: implement the merge as an efficient method in the HVG class above
-"""
-IDEA:
-
-1. take the leading edge of hvg1 and the trailing edge of hvg2
-2. construct a new time series from the corresponding indices
-3. build its HVG hvg3
-4. add the new edges of hvg3 to the combined edges of hvg1 and hvg2
-5. update the leading or trailing edges with those of hvg3
-"""
-
-def merge(hvg1, hvg2):
+  @property
+  def A(self):
+    if self._A is None:
+      A = dok_matrix((self.length, self.length), dtype=np.float32)
+      for u, v, w in self.E:
+        A[u,v] = w
+      self._A = A
+    return self._A
 
 
+  def merge(self, other, copy=True):
+    '''
+    Merge an `other` HVG to the right of the current HVG
+    
+    By default returns a new HVG object.
+    
+    Setting `copy=False` can be useful for multiple iterated merges when the
+      intermediate results are not important.
+    '''
 
+    # When using weights in merges the neighbour weights must match.
+    assert self.neighbour_weight == other.neighbour_weight
 
-def merge(hvg_1, hvg_2):
-  """
-  Stitch together two batch HVGs using their future- and past-facing data.
-  """
+    # Compute the adjacency for the joint graph
+    L1, L2 = self.length, other.length
+    N = L1 + L2
+    A = dok_matrix((N, N), dtype=np.float32)
 
-  (V1, E1), (vis_p1, vis_f1), X1, t1 = hvg_1
-  (V2, E2), (vis_p2, vis_f2), X2, t2 = hvg_2
+    # We already have the upper left and lower right blocks.
+    A[:L1, :L1] = self.A
+    A[L1:, L1:] = other.A
 
-  # First ensure the vertex labels are disjoint    
-  L1 = len(V1)
-  L2 = len(V2)
-  V = xrange(L1 + L2)
-  E2 = [(u + L1, v + L1, w) for (u,v,w) in E2]
-  vis_p2 = [(v + L1, val) for (v, val) in vis_p2]
-  vis_f2 = [(v + L1, val) for (v, val) in vis_f2]
+    # But some nodes from the two graphs may be visible to one another.
+    keys = self.vis_f + [v + L1 for v in other.vis_p]
+    vals = [self.X[v] for v in self.vis_f] + [other.X[v] for v in other.vis_p]
 
-  # Account for possibly different translations to the original data.
-  # Edge weights are relative so we only update Xi and vis_pi and vis_fi.
-  if t1 < t2:
-    # increase in X2 values was greater so add t2 to original X1 values
-    align = t2 - t1
-    X1 = X1 + align
-    vis_p1 = [(v, val + align) for (v, val) in vis_p1]
-    vis_f1 = [(v, val + align) for (v, val) in vis_f1]
-    translate = t2
+    # We treat the possibly visible values as a subsequence and create its HVG.
+    hvg = HVG().add_batch(vals)
 
-  elif t2 < t1:
-    # increase in X1 values was greater so add t1 to original X2 values
-    align = t1 - t2
-    X2 = X2 + align
-    vis_p2 = [(v, val + align) for (v, val) in vis_p2]
-    vis_f2 = [(v, val + align) for (v, val) in vis_f2]
-    translate = t1
+    # Its edges give the off diagonal blocks in the joint adjacency matrix.
+    for u, v, w in hvg.E:
+      # We know u is in the current HVG and v is in the `other` HVG.
+      # Moreover u and v are indirectly indexed via the list of `keys`.
+      A[keys[u], keys[v]] = w
 
-  else:
-    # translations t1 and t2 were the same
-    translate = t1
+    # Compute the combined time series and the new past/future node indices
+    X = self.X + other.X
+    vis_p = self.vis_p + [v + L1 for v in other.vis_p if v > self.max_val]
+    vis_f = [v for v in self.vis_f if v > other.max_val]
+    vis_f += [v + L1 for v in other.vis_f]
 
-  # Start with the past- and future-facing vertices from the first HVG
-  vis_p = vis_p1
+    if copy:
+      hvg = HVG()
+    else:
+      hvg = self
 
-  # Find the maximum value in X1 to update past-facing visibility
-  max_val = np.max(X1)
+    hvg.X = X
+    hvg._A = A
+    hvg.length = N
+    hvg.vis_p = vis_p
+    hvg.vis_f = vis_f
+    
+    # Reset the edge list as we don't need it now and it is slow to work with.
+    # Prefer the adjacency representation when merges are involved.
+    hvg.E = []
 
-  # Initialise the _new_ edges that will join the HVGs together
-  E_merge = []
-  
-  # Now process the past-facing vertices from the second batch.
-  # Link them to the appropriate future-facing vertices in the first batch.
-  for (v, val) in vis_p2:
-
-    if X2[v-L1] > max_val:
-      # update vis_p to include new past-facing vertices from hvg_2
-      vis_p.append((v, max_val))
-      max_val = X2[v-L1]
-
-    while len(vis_f1) > 0:
-      u, bottom = vis_f1[-1]
-
-      # Check whether u is the rightmost vertex of the HVG so far
-      if bottom == -np.inf:
-        # If it is then to get consistent weights we use a basline
-        bottom = 0
-
-      # Check whether value at v is greater than or equal to value at u
-      if X1[u] <= X2[v-L1]:
-        # If so then v can see u and u's 'shadow' on v is of height X1[u]-bottom
-        E_merge.append((u, v, X1[u]-bottom))
-        # Moreover u is now blocked from any further future visibility
-        vis_f1 = vis_f1[:-1]
-
-        # If the value at v was the same as at u then
-        # no additional edges can be added from v to earlier vertices
-        if X1[u] == X2[v-L1]:
-          break
-
-      else:
-        # The value at u was greater than the value at v. So v sees u
-        # from height 'bottom' up to v's own height
-        E_merge.append((u, v, X2[v-L1]-bottom))
-        
-        # v partially blocks u so u's new 'bottom' is the height of v itself
-        vis_f1[-1] = (u, X2[v-L1])
-        # moreover no further edges can be added
-        break
-
-    # Note we do note append anything to vis_f1 at this point as it
-    # cannot increase in size during a merge.
-
-  # However if there are remaining points in vis_f1 they must be future-facing
-  # in the merged HVG over the maximum value in X2
-  if len(vis_f1) > 0:
-    (u, val) = vis_f1[-1]
-    vis_f1[-1] = (u, np.max(X2))
-
-  # Join the original edge sets with the 'merging edges'   
-  E = E1 + E_merge + E2
-  # Also update vis_f to include vertices in hvg_1 able to see the future 
-  vis_f = vis_f1 + vis_f2
-  # And ensure we pass back an aligned sequence for the joint batch
-  X = np.concatenate((X1, X2))
-
-  return (V, E), (vis_p, vis_f), X, translate
-
+    return hvg
 
