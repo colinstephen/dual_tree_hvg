@@ -14,7 +14,9 @@
 """
 Provides functions to construct horizontal visibility graphs (HVGs) of time
 series directly, or via online streaming of batched time series data of
-arbitrary length. Works in worst-case O(n) time.
+arbitrary length. Also allows addition (merging) of existing HVG graphs.
+
+All graph construction methods work in worst-case O(n) time.
 """
 
 
@@ -26,30 +28,57 @@ from scipy.sparse import dok_matrix
 
 class HVG:
   '''
-  Class for the weighted horizontal visibility of a sequence.
+  Class for the weighted horizontal visibility graph (HVG) of a sequence.
   '''
 
 
-  def __init__(self):
-    self.X = []  # the actual time series
-    self.length = 0  # update to avoid multiple calls to `len(self.X)`
-    self.E = []  # list of weighted HVG edges [u, v, w]
+  def __init__(self, X_init=None):
+    '''
+    Sets up internal machinery for building HVGs from sequences.
+
+    Optionally takes an initial sequence `X_init` to build the graph from.
+    '''
+
+    self.X = []  # the underlying time series sequence
     self.vis_p = []  # longest strictly increasing subsequence from self.X[0]
     self.vis_f = []  # longest strictly decreasing subsequence to self.X[-1] 
     self.max_val = -np.inf  # update to avoid multiple calls to `max(self.X)`
     self.neighbour_weight = np.inf  # value of w for edges [u, u+1, w]
-    self._A = None  # upper triangular adjacency matrix corresponding to self.E
+    self._E = []  # list of weighted HVG edges [u, v, w]
+    self._A = None  # upper triangular adjacency matrix corresponding to self._E
+
+    # If a sequence was supplied, use it to build the graph.
+    if X_init is not None and len(X_init):
+      self.add_batch(X)
+
+    return self
 
 
   def __len__(self):
-    return self.length
+    return len(self.X)
+
+
+  def __add__(self, other):
+    '''
+    Allow adding HVGs via expressions like `hvg3 = hvg1 + hvg2`.
+    '''
+    return self.merge(other, copy=True)
+
+
+  def __iadd__(self, other):
+    '''
+    Allow extending HVGs via expressions like `hvg1 += hvg2`
+    '''
+    return self.merge(other, copy=False)
 
 
   def add_one(self, x):
+    '''
+    Extend this HVG by adding edges induced by a new value `x`.
+    '''
 
-    v = self.length
+    v = len(self.X)
     self.X += [x]
-    self.length += 1
     # we now have self.X[v] = x
         
     if x > self.max_val:
@@ -62,9 +91,9 @@ class HVG:
       
       if self.X[u] <= self.X[v]:
         if v == u+1:
-          self.E += [[u, v, self.neighbour_weight]]
+          self._E += [[u, v, self.neighbour_weight]]
         else:
-          self.E += [[u, v, self.X[u]-h]]
+          self._E += [[u, v, self.X[u]-h]]
         del self.vis_f[-1]
         if self.X[u] == self.X[v]:
           break
@@ -72,9 +101,9 @@ class HVG:
 
       else:
         if v == u+1:
-          self.E += [[u, v, self.neighbour_weight]]
+          self._E += [[u, v, self.neighbour_weight]]
         else:
-          self.E += [[u, v, self.X[v]-h]]
+          self._E += [[u, v, self.X[v]-h]]
         break
 
     self.vis_f += [v]
@@ -83,6 +112,9 @@ class HVG:
 
 
   def add_batch(self, batch):
+    '''
+    Extend this HVG according to a new batch (list) of sequence values.
+    '''
     for x in batch:
       self.add_one(x)
 
@@ -91,9 +123,14 @@ class HVG:
 
   @property
   def A(self):
-    if self._A is None:
-      A = dok_matrix((self.length, self.length), dtype=np.float32)
-      for u, v, w in self.E:
+    '''
+    Sparse upper triangular weighted adjacency matrix of this HVG.
+
+    Recomputes whenever new sequence values have been added.
+    '''
+    if (self._A is None) or (self._A.get_shape()[0] != len(self)):
+      A = dok_matrix((len(self), len(self)), dtype=np.float32)
+      for u, v, w in self._E:
         A[u,v] = w
       self._A = A
     return self._A
@@ -113,7 +150,7 @@ class HVG:
     assert self.neighbour_weight == other.neighbour_weight
 
     # Compute the adjacency for the joint graph
-    L1, L2 = self.length, other.length
+    L1, L2 = len(self), len(other)
     N = L1 + L2
     A = dok_matrix((N, N), dtype=np.float32)
 
@@ -129,7 +166,7 @@ class HVG:
     hvg = HVG().add_batch(vals)
 
     # Its edges give the off diagonal blocks in the joint adjacency matrix.
-    for u, v, w in hvg.E:
+    for u, v, w in hvg._E:
       # We know u is in the current HVG and v is in the `other` HVG.
       # Moreover u and v are indirectly indexed via the list of `keys`.
       A[keys[u], keys[v]] = w
@@ -139,21 +176,21 @@ class HVG:
     vis_p = self.vis_p + [v + L1 for v in other.vis_p if v > self.max_val]
     vis_f = [v for v in self.vis_f if v > other.max_val]
     vis_f += [v + L1 for v in other.vis_f]
+    max_val = max(self.max_val, other.max_val)
 
     if copy:
       hvg = HVG()
     else:
       hvg = self
 
+    # Finally set all the properties of our larger HVG object.
     hvg.X = X
-    hvg._A = A
-    hvg.length = N
     hvg.vis_p = vis_p
     hvg.vis_f = vis_f
-    
-    # Reset the edge list as we don't need it now and it is slow to work with.
-    # Prefer the adjacency representation when merges are involved.
-    hvg.E = []
+    hvg.max_val = max_val
+    hvg.neighbour_weight = self.neighbour_weight
+    hvg._E = []  # We prefer adjacency representation when merges are involved.
+    hvg._A = A
 
     return hvg
 
