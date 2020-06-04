@@ -29,6 +29,16 @@ from scipy.sparse import dok_matrix
 class HVG:
   '''
   Class for the weighted horizontal visibility graph (HVG) of a sequence.
+
+  - Constructor returns an empty graph
+  - HVGs can be built incrementally with the `add_one()` method. 
+  - HVGs can be built in batches using the `add_batch()` method - this uses
+      the `add_one()` method under the hood. Overall this is O(n).
+  - HVGs can be added/merged with the `+` and `+=` operators - these use an
+      efficient structural merge that is typically sublinear in the number of
+      vertices in the returned graph and in the worst case is O(n).
+  - Weighted adjacency matrix (upper triangular) can be accessed a the `A`
+      property.
   '''
 
 
