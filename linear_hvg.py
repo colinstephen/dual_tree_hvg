@@ -79,34 +79,40 @@ class HVG:
 
     v = len(self.X)
     self.X += [x]
-    # we now have self.X[v] = x
+    # We now have `self.X[v] == x`.
         
     if x > self.max_val:
+      # Update the longest strictly increasing subsequence from `self.X[0]`.
       self.vis_p += [v]
       self.max_val = x
 
     while self.vis_f:
-      
+      # There is a longest strictly decreasing subsequence to `self.X[-1]`.
+      # We process it in reverse order until an element exceeds the
+      #   new value `x`. Then all earlier elements do too.
+
       u = self.vis_f[-1]
       
       if self.X[u] <= self.X[v]:
+        # The new value `x` at vertex `v` blocks the value at vertex `u`. 
         if v == u+1:
           self._E += [[u, v, self.neighbour_weight]]
         else:
           self._E += [[u, v, self.X[u]-h]]
-        del self.vis_f[-1]
+        del self.vis_f[-1]  # blocked vertices can never be seen again
         if self.X[u] == self.X[v]:
           break
-        h = self.X[u]
+        h = self.X[u]  # next weight will be height above the newly blocked `u`
 
       else:
+        # The value `x` at vertex `v` has exactly one edge to the existing HVG.
         if v == u+1:
           self._E += [[u, v, self.neighbour_weight]]
         else:
           self._E += [[u, v, self.X[v]-h]]
         break
 
-    self.vis_f += [v]
+    self.vis_f += [v]  # The new vertex `v` extends the decreasing subsequence.
 
     return self
 
@@ -149,7 +155,7 @@ class HVG:
     # When using weights in merges the neighbour weights must match.
     assert self.neighbour_weight == other.neighbour_weight
 
-    # Compute the adjacency for the joint graph
+    # Set up the adjacency matrix for the joint graph
     L1, L2 = len(self), len(other)
     N = L1 + L2
     A = dok_matrix((N, N), dtype=np.float32)
@@ -159,13 +165,12 @@ class HVG:
     A[L1:, L1:] = other.A
 
     # But some nodes from the two graphs may be visible to one another.
-    keys = self.vis_f + [v + L1 for v in other.vis_p]
+    # We treat the possibly visible values as a subsequence and create its HVG.    
+    keys = self.vis_f + [v + L1 for v in other.vis_p]  # relevant vertex labels
     vals = [self.X[v] for v in self.vis_f] + [other.X[v] for v in other.vis_p]
-
-    # We treat the possibly visible values as a subsequence and create its HVG.
     hvg = HVG().add_batch(vals)
 
-    # Its edges give the off diagonal blocks in the joint adjacency matrix.
+    # Edges of `hvg` give the off diagonal blocks in the joint adjacency matrix.
     for u, v, w in hvg._E:
       # We know u is in the current HVG and v is in the `other` HVG.
       # Moreover u and v are indirectly indexed via the list of `keys`.
@@ -183,13 +188,13 @@ class HVG:
     else:
       hvg = self
 
-    # Finally set all the properties of our larger HVG object.
+    # Finally set all the properties on our larger HVG object.
     hvg.X = X
     hvg.vis_p = vis_p
     hvg.vis_f = vis_f
     hvg.max_val = max_val
     hvg.neighbour_weight = self.neighbour_weight
-    hvg._E = []  # We prefer adjacency representation when merges are involved.
+    hvg._E = []  # Prefer adjacency representation when merges are involved.
     hvg._A = A
 
     return hvg
