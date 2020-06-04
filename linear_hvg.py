@@ -12,11 +12,11 @@
 
 
 """
-Provides functions to construct horizontal visibility graphs (HVGs) of time
+Provides a class to construct horizontal visibility graphs (HVGs) of time
 series directly, or via online streaming of batched time series data of
-arbitrary length. Also allows addition (merging) of existing HVG graphs.
+arbitrary length. Also allows easy addition (merging) of existing HVG graphs.
 
-All graph construction methods work in worst-case O(n) time.
+All graph construction methods and merging work in worst-case O(n) time.
 """
 
 
