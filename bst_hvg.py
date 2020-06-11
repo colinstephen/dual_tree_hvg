@@ -1,12 +1,28 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 
 
-# ORIGINAL ATTRIBUTION - code in this file is mildly edited from the following
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# AUTHOR: Delia Fano Yela
-# DATE:  December 2018
-# CONTACT: d.fanoyela@qmul.ac.uk
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# https://github.com/delialia/bst
+
+"""
+ORIGINAL ATTRIBUTION (this is an edited version)
+
+AUTHOR: Delia Fano Yela
+DATE:  December 2018
+CONTACT: d.fanoyela@qmul.ac.uk
+GIT: https://github.com/delialia/bst 
+
+REFERENCE FOR TECHNIQUE
+
+Fano Yela, D., Thalmann, F., Nicosia, V., Stowell, D., Sandler, M., 2020.
+"Online visibility graphs: Encoding visibility in a binary search tree."
+Phys. Rev. Research 2, 023069. https://doi.org/10.1103/PhysRevResearch.2.023069
+
+DESCRIPTION
+
+Provides a class and functions to compute the horizontal visibility graphs
+(HVG) of time series using a recursive binary search tree encoding-decoding
+approach.
+"""
 
 
 
@@ -104,7 +120,8 @@ def merge(list_roots_in): #[node01, node02]
     list_roots = [list_roots_in[i] for i in sidx]
     # find the node with the maximum data point in the list:
     # index --> Find index of first " " in mylist
-    root = list_roots[[x.data for x in list_roots].index(max([x.data for x in list_roots]))]
+    root = list_roots[[x.data for x in list_roots].index(max([x.data for x in
+      list_roots]))]
     # Get the children of the maximum root
     root_kids = root.getKids()
     # Set the threshold :
@@ -113,7 +130,8 @@ def merge(list_roots_in): #[node01, node02]
     iter_pool = list_roots[:]
     iter_pool.remove(root)
     pool = iter_pool[:]
-    # add the kids from the leftovers that are on the opposite side of the threshold to their parent
+    # add the kids from the leftovers that are on the opposite side of the
+    # threshold to their parent
     for node in iter_pool:
       kids = node.getKids()
       if kids:
@@ -133,6 +151,7 @@ def merge(list_roots_in): #[node01, node02]
     bigger  = [ x for x in pool if x.value > th]
 
     # return the node recursively:
-    return(Node(value = root.value, data = root.data, left = merge(smaller), right = merge(bigger)))
+    return(Node(value = root.value, data = root.data, left = merge(smaller),
+      right = merge(bigger)))
 
 

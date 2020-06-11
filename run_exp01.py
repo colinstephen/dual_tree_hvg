@@ -92,15 +92,15 @@ for L in [10, 50, 1e2, 5e2, 1e3, 5e3, 1e4, 5e4, 1e5]:
             #"--------------------------------------"
 
             #"DC HVG:"
-            start = time.time()
-            out = dc_hvg(s, 0, L)
-            end1 = time.time()
+            # start = time.time()
+            # out = dc_hvg(s, 0, L)
+            # end1 = time.time()
 
-            file.write("%.5f," %(end1 - start))
-            file.write("%.5f," %L)
-            file.write('"%s",' %series_type)
-            file.write('"hvg",')
-            file.write('"dc"\n')
+            # file.write("%.5f," %(end1 - start))
+            # file.write("%.5f," %L)
+            # file.write('"%s",' %series_type)
+            # file.write('"hvg",')
+            # file.write('"dc"\n')
 
             #"Binary HVG:"
             # start = time.time()
@@ -114,15 +114,15 @@ for L in [10, 50, 1e2, 5e2, 1e3, 5e3, 1e4, 5e4, 1e5]:
             # file.write('"bt"\n')
 
             #"Linear HVG:"
-            # start = time.time()
-            # out = linear_hvg(s)
-            # end1 = time.time()
+            start = time.time()
+            out = linear_hvg(s)
+            end1 = time.time()
 
-            # file.write("%.5f," %(end1 - start))
-            # file.write("%.5f," %L)
-            # file.write('"%s",' %series_type)
-            # file.write('"hvg",')
-            # file.write('"linear"\n')
+            file.write("%.5f," %(end1 - start))
+            file.write("%.5f," %L)
+            file.write('"%s",' %series_type)
+            file.write('"hvg",')
+            file.write('"linear"\n')
 
 
 

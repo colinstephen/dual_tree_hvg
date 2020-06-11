@@ -1,3 +1,30 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
+
+
+"""
+ORIGINAL ATTRIBUTION (this is an edited version)
+
+AUTHOR: Delia Fano Yela
+DATE:  December 2018
+CONTACT: d.fanoyela@qmul.ac.uk
+GIT: https://github.com/delialia/bst
+
+REFERENCE FOR TECHNIQUE
+
+"Fast transformation from time series to visibility graphs"
+Xin Lan, Hongming Mo, Shiyu Chen, Qi Liu, and Yong Deng
+Chaos 25, 083105 (2015); doi: 10.1063/1.4927835
+
+DESCRIPTION
+
+Provides a function to compute the horizontal visibility graph (HVG) of a time
+series using a recursive divide and conquer approach.
+"""
+
+
+
 import numpy as np
 
 def dc_hvg(X, left, right, all_visible = None):

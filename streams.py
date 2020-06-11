@@ -12,8 +12,7 @@
 
 
 """
-Provides functions to create and consume streams of time series and convert them
-in to horizontal visibility graphs (HVGs).
+Provides functions to create streams of interesting time series.
 """
 
 
@@ -26,13 +25,14 @@ from fbm import FBM, MBM
 
 
 def random(n, seed=None):
+    # random noise
 	np.random.seed(seed)
 	return np.random.random(size=n)
 
 
 
 def discrete_random_walk(n, seed=None):
-    
+    # single step random walk
     np.random.seed(seed)
     walk = np.empty(n)
     walk[0] = 0
@@ -43,47 +43,50 @@ def discrete_random_walk(n, seed=None):
 
 
 def fbm(n, hurst=0.5, seed=None):
-
+    # fractional Brownian motion
     np.random.seed(seed)
-
     f = FBM(n, hurst)
     fbm_sample = f.fbm()
     return fbm_sample
 
 
+
 def mfbm(n, hurst_func, seed=None):
-
+    # multifractional Brownian motion
+    # hurst_func is a function mapping real time to real Hurst index
     np.random.seed(seed)
-
     f = MBM(n, hurst=hurst_func)
     mfbm_sample = f.mbm()
     return mfbm_sample
 
 
-def logistic_attractor(n, a=3.9995, delay=1000, seed=None):
-    
-    np.random.seed(seed)
 
+def logistic_attractor(n, a=3.9995, delay=1000, seed=None):
+    # discrete logistic map
     logistic = lambda x: a * x * (1-x)
 
+    # burn in the trajectory
+    np.random.seed(seed)
     x_ = np.random.random()
     for i in range(delay):
         x_ = logistic(x_)
 
+    # now generate the actual data
     x = np.empty(n)    
     x[0] = x_
 
     for i in range(n - 1):
-            x[i+1] = logistic(x[i])
+        x[i+1] = logistic(x[i])
     
     return x
 
 
 
-def lorentz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None):
-    # return the x component of a 3d Lorenz system
+def lorentz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None, tmax=100):
+    # samples from the x component of a 3d Lorenz system
     
-    # initial condition
+    # random initial condition
+    np.random.seed(seed)
     X = np.random.random(3)
     
     def lorenz(X, t, sigma, beta, rho):
@@ -94,38 +97,33 @@ def lorentz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None):
         wp = -beta*w + u*v
         return up, vp, wp
 
-    tmax = 100
+    # now solve the Lorenz equations to get the trajectory
     t = np.linspace(0, tmax, n)
     f = odeint(lorenz, X, t, args=(sigma, beta, rho))
-    x, y, z = f.T
+    x = f[:,0]
 
     return x
     
 
 
 def henon_attractor(n, alpha=1.4, beta=0.3035):
+    # samples from the x component of a 2d Henon system
     
-    # Henon map
     def henon(uv):
+        """The Henon equations."""
         u, v = uv
         up = 1 - alpha*u**2 + v
         vp = beta*u
         return up, vp
 
+    # begin with a random initial condition
     X = np.empty((n,2))
     X[0] = np.random.random(2)
 
+    # generate the trajectory
     for i in range(n - 1):
         X[i+1] = henon(X[i])
 
     return X[:,0]
-
-
-
-def packet_stream(dynamic_model, *args, n_batches=1, batch_size=1, **kwargs):
-    N = n_batches * batch_size
-    data = stream(*args, **kwargs)
-    for i in range(n_batches):
-        yield data[i*batch_size : (i+1)*batch_size]
 
 

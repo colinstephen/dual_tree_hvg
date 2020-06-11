@@ -3,20 +3,16 @@
 
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# AUTHOR: Colin Stephen
-# DATE:  April 2020
-# CONTACT: colin.stephen@coventry.ac.uk
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
 """
-Provides a class to construct horizontal visibility graphs (HVGs) of time
-series directly, or via online streaming of batched time series data of
-arbitrary length. Also allows easy addition (merging) of existing HVG graphs.
+AUTHOR: Colin Stephen
+DATE:  April 2020
+CONTACT: colin.stephen@coventry.ac.uk
 
-All graph construction methods and merging work in worst-case O(n) time.
+DESCRIPTION
+
+Provides a class to construct horizontal visibility graphs (HVGs) of time
+series directly, or via online streaming of batch/packet time series data of
+arbitrary size, and to add (merge) existing HVG graphs quickly.
 """
 
 
@@ -30,15 +26,15 @@ class HVG:
   '''
   Class for the weighted horizontal visibility graph (HVG) of a sequence.
 
-  - Constructor returns an empty graph
-  - HVGs can be built incrementally with the `add_one()` method. 
-  - HVGs can be built in batches using the `add_batch()` method - this uses
-      the `add_one()` method under the hood. Overall this is O(n).
-  - HVGs can be added/merged with the `+` and `+=` operators - these use an
-      efficient structural merge that is typically sublinear in the number of
-      vertices in the returned graph and in the worst case is O(n).
-  - Weighted adjacency matrix (upper triangular) can be accessed a the `A`
-      property.
+  METHODS
+  - add_one() : build HVG incrementally with new values 
+  - add_batch() : call add_one() multiple times on a list of values
+  
+  OPERATORS
+  - + and += : efficient structural merge of existing HVGs
+  
+  PROPERTIES
+  - A : Weighted upper triangular adjacency matrix
   '''
 
 
@@ -49,13 +45,13 @@ class HVG:
     Optionally takes an initial sequence `X_init` to build the graph from.
     '''
 
-    self.X = []  # the underlying time series sequence
-    self.vis_p = []  # longest strictly increasing subsequence from self.X[0]
-    self.vis_f = []  # longest strictly decreasing subsequence to self.X[-1] 
+    self.X = []  # the underlying time series sequence values
+    self.vis_p = []  # longest strictly increasing subsequence from `self.X[0]`
+    self.vis_f = []  # longest strictly decreasing subsequence to `self.X[-1]`
     self.max_val = -np.inf  # update to avoid multiple calls to `max(self.X)`
-    self.neighbour_weight = np.inf  # value of w for edges [u, u+1, w]
-    self._E = []  # list of weighted HVG edges [u, v, w]
-    self._A = None  # upper triangular adjacency matrix corresponding to self._E
+    self.neighbour_weight = np.inf  # value of `w` for edges `[u, u+1, w]`
+    self._E = []  # list of weighted HVG edges `[u, v, w]`
+    self._A = None  # upper triangular adjacency matrix of this graph
 
     # If a sequence was supplied, use it to build the graph.
     if X_init is not None and len(X_init):
@@ -65,6 +61,10 @@ class HVG:
 
 
   def __len__(self):
+    '''
+    The length of an HVG is the number of its vertices.
+    '''
+
     return len(self.X)
 
 
@@ -72,6 +72,7 @@ class HVG:
     '''
     Allow adding HVGs via expressions like `hvg3 = hvg1 + hvg2`.
     '''
+
     return self.merge(other, copy=True)
 
 
@@ -79,6 +80,7 @@ class HVG:
     '''
     Allow extending HVGs via expressions like `hvg1 += hvg2`
     '''
+
     return self.merge(other, copy=False)
 
 
@@ -98,7 +100,7 @@ class HVG:
 
     while self.vis_f:
       # There is a longest strictly decreasing subsequence to `self.X[-1]`.
-      # We process it in reverse order until an element exceeds the
+      # Process it in reverse order until an element exceeds the
       #   new value `x`. Then all earlier elements do too.
 
       u = self.vis_f[-1]
@@ -115,7 +117,7 @@ class HVG:
         h = self.X[u]  # next weight will be height above the newly blocked `u`
 
       else:
-        # The value `x` at vertex `v` has exactly one edge to the existing HVG.
+        # The value `x` at vertex `v` adds one more edge to the existing HVG.
         if v == u+1:
           self._E += [[u, v, self.neighbour_weight]]
         else:
@@ -131,6 +133,7 @@ class HVG:
     '''
     Extend this HVG according to a new batch (list) of sequence values.
     '''
+
     for x in batch:
       self.add_one(x)
 
@@ -142,13 +145,16 @@ class HVG:
     '''
     Sparse upper triangular weighted adjacency matrix of this HVG.
 
-    Recomputes whenever new sequence values have been added.
+    Recomputed whenever new sequence values have been added.
     '''
-    if (self._A is None) or (self._A.get_shape()[0] != len(self)):
-      A = dok_matrix((len(self), len(self)), dtype=np.float32)
+
+    if (self._A is None) or (self._A.get_shape()[0] != len(self.X)):
+      N = len(self.X)
+      A = dok_matrix((N, N), dtype=np.float32)
       for u, v, w in self._E:
         A[u,v] = w
       self._A = A
+
     return self._A
 
 
@@ -162,7 +168,8 @@ class HVG:
       intermediate results are not important.
     '''
 
-    # When using weights in merges the neighbour weights must match.
+    # When using weights in merges the neighbour weights must match,
+    # otherwise downstream weight-based graph analysis of the HVG is invalid.
     assert self.neighbour_weight == other.neighbour_weight
 
     # Set up the adjacency matrix for the joint graph
@@ -171,6 +178,7 @@ class HVG:
     A = dok_matrix((N, N), dtype=np.float32)
 
     # We already have the upper left and lower right blocks.
+    # These are already upper triangular.
     A[:L1, :L1] = self.A
     A[L1:, L1:] = other.A
 
@@ -183,7 +191,7 @@ class HVG:
     # Edges of `hvg` give the off diagonal blocks in the joint adjacency matrix.
     for u, v, w in hvg._E:
       # We know u is in the current HVG and v is in the `other` HVG.
-      # Moreover u and v are indirectly indexed via the list of `keys`.
+      # Moreover u and v are indirectly indexed via the list `keys`.
       A[keys[u], keys[v]] = w
 
     # Compute the combined time series and the new past/future node indices
@@ -198,7 +206,7 @@ class HVG:
     else:
       hvg = self
 
-    # Finally set all the properties on our larger HVG object.
+    # Finally set all the properties on the larger HVG.
     hvg.X = X
     hvg.vis_p = vis_p
     hvg.vis_f = vis_f
