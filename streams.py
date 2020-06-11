@@ -82,7 +82,7 @@ def logistic_attractor(n, a=3.9995, delay=1000, seed=None):
 
 
 
-def lorentz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None, tmax=100):
+def lorenz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None, tmax=100):
     # samples from the x component of a 3d Lorenz system
     
     # random initial condition
@@ -106,7 +106,7 @@ def lorentz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None, tmax=100):
     
 
 
-def henon_attractor(n, alpha=1.4, beta=0.3035):
+def henon_attractor(n, alpha=1.4, beta=0.3035, seed=None):
     # samples from the x component of a 2d Henon system
     
     def henon(uv):
@@ -118,6 +118,7 @@ def henon_attractor(n, alpha=1.4, beta=0.3035):
 
     # begin with a random initial condition
     X = np.empty((n,2))
+    np.random.seed(seed)
     X[0] = np.random.random(2)
 
     # generate the trajectory
@@ -125,5 +126,30 @@ def henon_attractor(n, alpha=1.4, beta=0.3035):
         X[i+1] = henon(X[i])
 
     return X[:,0]
+
+
+
+def rossler_attractor(n, a=0.2, b=0.2, c=5.7, seed=None, tmax=100):
+    # samples from the z component of a 3d Rossler system
+
+    # random initial condition
+    np.random.seed(seed)
+    X = np.random.random(3)
+    
+    def rossler(X, t, a, b, c):
+        """The Rossler equations."""
+        x, y, z = X
+        ux = -(y + z)
+        uy = x + a * y
+        uz = b + z * (x - c)
+        return ux, uy, uz
+
+    # now solve the Rossler equations to get the trajectory
+    t = np.linspace(0, tmax, n)
+    f = odeint(rossler, X, t, args=(a, b, c))
+    z = f[:,2]
+
+    return z
+
 
 

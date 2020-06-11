@@ -217,3 +217,9 @@ class HVG:
 
     return hvg
 
+
+
+def hvg(X):
+  return HVG(X)
+
+

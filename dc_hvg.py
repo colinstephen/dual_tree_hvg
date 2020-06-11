@@ -27,7 +27,7 @@ series using a recursive divide and conquer approach.
 
 import numpy as np
 
-def dc_hvg(X, left, right, all_visible = None):
+def hvg(X, left, right, all_visible = None):
 
     if all_visible == None : all_visible = []
 
