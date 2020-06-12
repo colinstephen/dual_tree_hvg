@@ -45,7 +45,7 @@ def discrete_random_walk(n, seed=None):
 def fbm(n, hurst=0.5, seed=None):
     # fractional Brownian motion
     np.random.seed(seed)
-    f = FBM(n, hurst)
+    f = FBM(n=n, hurst=hurst)
     fbm_sample = f.fbm()
     return fbm_sample
 
@@ -82,6 +82,29 @@ def logistic_attractor(n, a=3.9995, delay=1000, seed=None):
 
 
 
+def henon_attractor(n, alpha=1.4, beta=0.3035, seed=None):
+    # samples from the x component of a 2d Henon system
+    
+    def henon(uv):
+        """The Henon equations."""
+        u, v = uv
+        up = 1 - alpha*u**2 + v
+        vp = beta*u
+        return up, vp
+
+    # begin with a random initial condition
+    X = np.empty((n,2))
+    np.random.seed(seed)
+    X[0] = np.random.random(2)
+
+    # generate the trajectory
+    for i in range(n - 1):
+        X[i+1] = henon(X[i])
+
+    return X[:,0]
+
+
+
 def lorenz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None, tmax=100):
     # samples from the x component of a 3d Lorenz system
     
@@ -104,29 +127,6 @@ def lorenz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None, tmax=100):
 
     return x
     
-
-
-def henon_attractor(n, alpha=1.4, beta=0.3035, seed=None):
-    # samples from the x component of a 2d Henon system
-    
-    def henon(uv):
-        """The Henon equations."""
-        u, v = uv
-        up = 1 - alpha*u**2 + v
-        vp = beta*u
-        return up, vp
-
-    # begin with a random initial condition
-    X = np.empty((n,2))
-    np.random.seed(seed)
-    X[0] = np.random.random(2)
-
-    # generate the trajectory
-    for i in range(n - 1):
-        X[i+1] = henon(X[i])
-
-    return X[:,0]
-
 
 
 def rossler_attractor(n, a=0.2, b=0.2, c=5.7, seed=None, tmax=100):

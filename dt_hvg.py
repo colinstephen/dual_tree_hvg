@@ -55,9 +55,8 @@ class HVG:
 
     # If a sequence was supplied, use it to build the graph.
     if X_init is not None and len(X_init):
-      self.add_batch(X)
+      self.add_batch(X_init)
 
-    return self
 
 
   def __len__(self):
@@ -220,6 +219,6 @@ class HVG:
 
 
 def hvg(X):
-  return HVG(X)
+  return HVG().add_batch(X)
 
 

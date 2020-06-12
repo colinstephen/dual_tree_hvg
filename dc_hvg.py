@@ -27,7 +27,10 @@ series using a recursive divide and conquer approach.
 
 import numpy as np
 
-def hvg(X, left, right, all_visible = None):
+def hvg(X, left=0, right=None, all_visible = None):
+
+    if right is None:
+        right = len(X)
 
     if all_visible == None : all_visible = []
 
@@ -38,21 +41,21 @@ def hvg(X, left, right, all_visible = None):
         k = np.argmax(X[left:right]) + left
         # check if k can see each node of series[left...right]
 
-        for i in xrange(left,right):
+        for i in range(left,right):
             if i != k :
                 a = min(i,k)
                 b = max(i,k)
 
                 yc = X[a+1:b]
 
-                if all( yc[k] < min(X[a],X[b]) for k in xrange(b-a-1) ):
+                if all( yc[k] < min(X[a],X[b]) for k in range(b-a-1) ):
                     node_visible.append(i)
-                elif all( yc[k] >= max(X[a],X[b]) for k in xrange(b-a-1) ):
+                elif all( yc[k] >= max(X[a],X[b]) for k in range(b-a-1) ):
                     break
 
         if len(node_visible) > 0 : all_visible.append([k, node_visible])
 
-        dc_hvg(X, left, k, all_visible = all_visible)
-        dc_hvg(X, k+1, right, all_visible = all_visible)
+        hvg(X, left, k, all_visible = all_visible)
+        hvg(X, k+1, right, all_visible = all_visible)
 
     return all_visible
