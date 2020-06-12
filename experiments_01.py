@@ -100,9 +100,20 @@ def time_algorithms(x):
 def single_rep(args):
 
 	source, length = args
-	
-	x = sources[source](length)
-	t0, t1, t2 = time_algorithms(x)
+	tries = 0
+	x = None
+
+	while tries < 10
+		try:
+			x = sources[source](length)
+		except Exception as e:
+			tries += 1
+
+	if x is None:
+		print(f'failed with source {source} and length {length}')
+		t0, t1, t2 = -1, -1, -1
+	else:
+		t0, t1, t2 = time_algorithms(x)
 
 	return t0, t1, t2
 
@@ -118,6 +129,8 @@ with open(results_file, 'w') as f:
 	for source in sources:
 
 		for length in lengths:
+
+			print('processing source {source} and length {length}')
 
 			results = pool.map(single_rep, [[source, length] for rep in reps])
 
