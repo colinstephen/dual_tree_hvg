@@ -22,6 +22,7 @@ import csv
 import time
 import numpy as np
 from functools import partial
+import multiprocessing
 
 import streams
 from bst_hvg import hvg as binary_search_hvg
@@ -30,7 +31,6 @@ from dt_hvg import hvg as dual_tree_hvg
 
 import sys
 sys.setrecursionlimit(25000)  # needed for DC method
-
 
 
 # Set up the time series data sources
@@ -60,8 +60,13 @@ for tmax in tmaxs:
 
 # Set up the experimental parameters
 
-reps = range(10)
-lengths = [2**x for x in range(8,18)]
+# reps = range(10)
+# lengths = [2**x for x in range(8,18)]
+
+# TESTING 
+reps = range(2)
+lengths = [2**x for x in range(8,10)]
+
 results_file = r'results_01.csv'
 csv_headers = ['source_name', 'length', 'bst_time', 'dc_time', 'dt_time']
 
@@ -83,6 +88,28 @@ def time_algorithm(alg, x):
 	return t1 - t0
 
 
+def time_algorithms(x):
+
+	t0 = time_algorithm(binary_search_hvg, x)
+	t1 = time_algorithm(divide_conquer_hvg, x)
+	t2 = time_algorithm(dual_tree_hvg, x)
+
+	return t0, t1, t2
+
+
+def single_rep(args):
+
+	source, length = args
+	
+	x = sources[source](length)
+	t0, t1, t2 = time_algorithms(x)
+
+	return t0, t1, t2
+
+
+pool = multiprocessing.Pool(len(reps))
+
+
 with open(results_file, 'w') as f:
 
 	writer = csv.writer(f)
@@ -90,18 +117,10 @@ with open(results_file, 'w') as f:
 
 	for source in sources:
 
-		for n in lengths:
+		for length in lengths:
 
-			for rep in reps:
+			results = pool.map(single_rep, [[source, length] for rep in reps])
 
-				x = sources[source](n)
-
-				# run each of the HVG algorithms on x and time it
-				# record times to the results csv file
-
-				t0 = time_algorithm(binary_search_hvg, x)
-				t1 = time_algorithm(divide_conquer_hvg, x)
-				t2 = time_algorithm(dual_tree_hvg, x)
-
-				writer.writerow([source, n, t0, t1, t2])
+			for result in results:
+				writer.writerow([source, length] + list(result))
 
