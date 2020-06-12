@@ -102,10 +102,12 @@ def single_rep(args):
 	source, length = args
 	tries = 0
 	x = None
+	success = False
 
-	while tries < 10:
+	while not success and tries < 10:
 		try:
 			x = sources[source](length)
+			success = True
 		except Exception as e:
 			tries += 1
 
