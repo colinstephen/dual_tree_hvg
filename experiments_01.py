@@ -103,7 +103,7 @@ def single_rep(args):
 	tries = 0
 	x = None
 
-	while tries < 10
+	while tries < 10:
 		try:
 			x = sources[source](length)
 		except Exception as e:
