@@ -130,7 +130,7 @@ with open(results_file, 'w') as f:
 
 		for length in lengths:
 
-			print('processing source {source} and length {length}')
+			print(f'processing source {source} and length {length}')
 
 			results = pool.map(single_rep, [[source, length] for rep in reps])
 
