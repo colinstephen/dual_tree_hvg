@@ -82,24 +82,21 @@ def logistic_attractor(n, a=3.9995, delay=1000, seed=None):
 
 
 
-def henon_attractor(n, alpha=1.4, beta=0.3035, seed=None):
-    # samples from the x component of a 2d Henon system
-    
-    def henon(uv):
-        """The Henon equations."""
-        u, v = uv
-        up = 1 - alpha*u**2 + v
-        vp = beta*u
-        return up, vp
-
-    # begin with a random initial condition
+def standard_map(n, K=1.2, seed=None):
     X = np.empty((n,2))
     np.random.seed(seed)
     X[0] = np.random.random(2)
 
-    # generate the trajectory
-    for i in range(n - 1):
-        X[i+1] = henon(X[i])
+    def standard(xy):
+        p, theta = xy
+        p = np.mod(p, 2*np.pi)
+        theta = np.mod(theta, 2*np.pi)
+        p_ = p + K * np.sin(theta)
+        theta_ = theta + p_
+        return p_, theta_
+
+    for i in range(n-1):
+        X[i+1] = standard(X[i])
 
     return X[:,0]
 

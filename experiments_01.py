@@ -39,7 +39,7 @@ sources = {
 	'random': streams.random,
 	'random_walk': streams.discrete_random_walk,
 	'logistic': streams.logistic_attractor,
-	'henon': streams.henon_attractor
+	'standard': streams.standard_map
 }
 
 hursts = np.linspace(0.15, 0.85, num=15)
@@ -58,21 +58,7 @@ for tmax in tmaxs:
 
 
 
-# Set up the experimental parameters
-
-# reps = range(10)
-# lengths = [2**x for x in range(8,18)]
-
-# TESTING 
-reps = range(2)
-lengths = [2**x for x in range(8,10)]
-
-results_file = r'results_01.csv'
-csv_headers = ['source_name', 'length', 'bst_time', 'dc_time', 'dt_time']
-
-
-
-# Run the experiments
+# Running the experiments
 
 def time_algorithm(alg, x):
 	'''
@@ -97,45 +83,69 @@ def time_algorithms(x):
 	return t0, t1, t2
 
 
-def single_rep(args):
 
-	source, length = args
-	tries = 0
-	x = None
-	success = False
+def single_run(args):
 
-	while not success and tries < 10:
-		try:
-			x = sources[source](length)
-			success = True
-		except Exception as e:
-			tries += 1
+		source, length, rep = args
+		tries = 0
+		x = None
+		success = False
 
-	if x is None:
-		print(f'failed with source {source} and length {length}')
-		t0, t1, t2 = -1, -1, -1
-	else:
-		t0, t1, t2 = time_algorithms(x)
+		print(f'source : {source} - length : {length} - rep : {rep}')
 
-	return t0, t1, t2
+		while not success and tries < 10:
+			try:
+				x = sources[source](length)
+				success = True
+			except Exception as e:
+				tries += 1
+
+		if x is None:
+			print(f'FAILED with source {source} length {length} rep {rep}')
+			t0, t1, t2 = -1, -1, -1
+		else:
+			t0, t1, t2 = time_algorithms(x)
+
+		# writer.writerow([source, length] + [t0, t1, t2])
+
+		return [source, length, t0, t1, t2]
 
 
-pool = multiprocessing.Pool(len(reps))
 
+# Set up the experimental parameters
+
+TESTING = True
+
+if TESTING:
+	reps = range(2)
+	lengths = [2**x for x in range(8,10)]
+	results_file = r'results_01.TESTING.csv'
+else:
+	reps = range(10)
+	lengths = [2**x for x in range(8,18)]
+	results_file = r'results_01.csv'
+
+csv_headers = ['source_name', 'length', 'bst_time', 'dc_time', 'dt_time']
+
+
+
+# Run the experiments
+
+pool = multiprocessing.Pool()
+params = [[source, length, rep] for source in sources for length in
+	lengths for rep in reps]
+results = pool.map(single_run, params)
+
+
+
+# Write the results
 
 with open(results_file, 'w') as f:
 
 	writer = csv.writer(f)
 	writer.writerow(csv_headers)
 
-	for source in sources:
+	for result in results:
+		writer.writerow(result)
 
-		for length in lengths:
-
-			print(f'processing source {source} and length {length}')
-
-			results = pool.map(single_rep, [[source, length] for rep in reps])
-
-			for result in results:
-				writer.writerow([source, length] + list(result))
 
