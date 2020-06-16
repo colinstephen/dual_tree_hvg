@@ -142,8 +142,6 @@ def time_algorithm(experiment_params):
 	'''
 	Apply an HVG algorithm to data and return the elapsed thread/process time.
 
-	To avoid reporting spurious process delays return the minimum of
-	several trials.
 	'''
 
 	alg, data_key = experiment_params
@@ -165,7 +163,9 @@ def time_algorithm(experiment_params):
 print(f'Begin running experiments at {now()}')
 
 
-pool = mp.Pool(3)
+# The experiments take a wide range of durations to complete
+# so set the pooling chunk size to 1 here to maximise resource usage.
+pool = mp.Pool()
 runtime_results = pool.imap(time_algorithm, exp_keys, chunksize=1)
 
 
