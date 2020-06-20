@@ -18,7 +18,7 @@ of HVG construction using different algorithms.
 
 
 
-EXPERIMENT = 1  # run this experiment
+EXPERIMENT = 2  # run this experiment
 TESTING = True  # testing mode reduces computation time
 data_filename = f'experiment_{EXPERIMENT}{"_TESTING" if TESTING else ""}_data.pickle'
 results_filename = f'experiment_{EXPERIMENT}{"_TESTING" if TESTING else ""}_results.csv'
@@ -101,16 +101,16 @@ for hurst in hursts:
 
 slopes = np.linspace(0, 2, num=11)
 for m in slopes:
-	exp2_sources[f'linear_trend_{m}'] = partial(streams.linear_trend, m=m)
+	exp2_sources[f'linear_trend_{m:.1f}'] = partial(streams.linear_trend, m=m)
 
 seasonal_frequencies = np.linspace(1, 3, num=11)
 for freq in seasonal_frequencies:
-	exp2_sources[f'seasonal_frequency_{freq}'] = partial(streams.seasonal_trend,
+	exp2_sources[f'seasonal_frequency_{freq:.1f}'] = partial(streams.seasonal_trend,
 		frequency=freq)
 
 seasonal_amplitudes = np.linspace(0, 3, num=11)
 for amp in seasonal_amplitudes:
-	exp2_sources[f'seasonal_amplitude_{amp}'] = partial(streams.seasonal_trend,
+	exp2_sources[f'seasonal_amplitude_{amp:.2f}'] = partial(streams.seasonal_trend,
 		amplitude=amp)
 
 if TESTING:
