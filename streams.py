@@ -31,6 +31,29 @@ def random(n, seed=None):
 
 
 
+def linear_trend(n, m=1, seed=None):
+    # random noise with a linear trend
+    # frequency of sequence is assumed to be n hertz
+    np.random.seed(seed)
+    noise = np.random.random(size=n)
+    time = np.linspace(0,1,num=n)
+    trend = m * time
+    return noise + trend
+
+
+
+def seasonal_trend(n, amplitude=0.5, frequency=1, seed=None):
+    # random noise with a seasonal trend
+    # frequency gives number of full cycles
+    # amplitude is with respect to full sequence of n points being 2pi seconds
+    np.random.seed(seed)
+    noise = np.random.random(size=n)
+    time = np.linspace(0, 2 * np.pi, num=n)
+    trend = amplitude * np.sin(frequency * time)
+    return noise + trend
+
+
+
 def discrete_random_walk(n, seed=None):
     # single step random walk
     np.random.seed(seed)
