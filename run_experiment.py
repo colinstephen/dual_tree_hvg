@@ -202,7 +202,7 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 	print(f'Begin running experiment {EXPERIMENT}: {now()}')
 	
-	experiment = get_experiment(EXPERIMENT)
+	experiment = get_experiment(EXPERIMENT, TESTING=TESTING)
 
 	sources = experiment['sources']
 	lengths = experiment['lengths']
