@@ -200,9 +200,6 @@ def get_experiment(EXPERIMENT, TESTING=True):
 
 def run_experiment(EXPERIMENT, TESTING=True):
 
-	# Initialise the pool of workers
-	pool = Pool()
-
 	print(f'Begin running experiment {EXPERIMENT}: {now()}')
 	
 	experiment = get_experiment(EXPERIMENT, TESTING=TESTING)
@@ -224,11 +221,9 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 	print(f'\tBegin generating experimental data: {now()}')
 
+	pool = Pool()
 	time_series_data = pool.starmap(generate_time_series, zip(data_keys,
 		repeat(sources)), chunksize=1)
-	pool.close()
-	pool.join()
-
 	for data_key, time_series in time_series_data:
 		if time_series is None:
 			print(f'\t\tgenerating data with parameters {data_key} failed')
@@ -238,6 +233,10 @@ def run_experiment(EXPERIMENT, TESTING=True):
 	pickle.dump(data, open(data_filename, 'wb'))
 
 	print(f'\tSaved experimental data to {data_filename}: {now()}')
+
+	pool.close()
+	pool.join()
+	pool.terminate()
 
 
 
@@ -249,10 +248,9 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 	print(f'\tBegin running experiments: {now()}')
 
+	pool = Pool()
 	runtime_results = pool.starmap(time_algorithm, zip(exp_keys, repeat(algs),
 		repeat(data)), chunksize=1)
-	pool.close()
-	pool.join()
 
 	f = open(results_filename, 'w')
 	writer = csv.writer(f)
@@ -272,9 +270,12 @@ def run_experiment(EXPERIMENT, TESTING=True):
 			print(f'\t\tCompleted {completed} of {total} at {now()}')
 
 	f.close()
-	pool.terminate()
 
 	print(f'\tCompleted saving results to {results_filename}: {now()}')
+
+	pool.close()
+	pool.join()
+	pool.terminate()
 
 	print(f'Completed running experiment {EXPERIMENT}: {now()}')
 
