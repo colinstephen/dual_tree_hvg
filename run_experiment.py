@@ -252,10 +252,6 @@ def get_experiment(EXPERIMENT, TESTING=True):
 	return experimental_data
 
 
-def get_data_filename(EXPERIMENT, TESTING=True):
-	return f'experiment_{EXPERIMENT}{"_TESTING" if TESTING else ""}_data.pickle'
-
-
 
 def get_results_filename(EXPERIMENT, TESTING=True):
 	return f'experiment_{EXPERIMENT}{"_TESTING" if TESTING else ""}_results.csv'
@@ -301,11 +297,10 @@ def run_experiment(EXPERIMENT, TESTING=True):
 		- writes timing results to a CSV file as it goes
 	'''
 
-	data_filename = get_data_filename(EXPERIMENT, TESTING)
 	results_filename = get_results_filename(EXPERIMENT, TESTING)
 
-
 	print(f'Begin running experiment {EXPERIMENT}: {now()}')
+
 	experimental_data = get_experiment(EXPERIMENT, TESTING=TESTING)
 
 
@@ -327,10 +322,6 @@ def run_experiment(EXPERIMENT, TESTING=True):
 	
 	print(f'\tEnd generating experimental data: {now()}')
 	
-	pickle.dump(experimental_data, open(data_filename, 'wb'))
-	print(f'\tSaved time series data to {data_filename}: {now()}')
-
-
 	
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# Run the algorithms on the experimental data and save run times
@@ -360,9 +351,6 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 	results_file.close()
 	print(f'\tSaved results to {results_filename}: {now()}')
-
-	pickle.dump(experimental_data, open(data_filename, 'wb'))
-	print(f'\tSaved all experiments and results to {data_filename}: {now()}')
 
 	print(f'Completed running experiment {EXPERIMENT}: {now()}')
 
