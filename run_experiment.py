@@ -249,7 +249,6 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 	print(f'\tBegin running experiments: {now()}')
 
-	pool = Pool()
 	runtime_results = pool.starmap(time_algorithm, zip(exp_keys, repeat(algs),
 		repeat(data)), chunksize=1)
 	pool.close()
