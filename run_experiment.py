@@ -5,7 +5,7 @@
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # AUTHOR: Colin Stephen
-# DATE:  May 2020
+# DATE:  June 2020
 # CONTACT: colin.stephen@coventry.ac.uk
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -15,6 +15,8 @@
 Run numerical experiments to compare run times
 of HVG construction using different algorithms. 
 """
+
+
 
 # See https://pythonspeed.com/articles/python-multiprocessing/
 # on why mp pools should spawn new processes rather than forking them
@@ -30,7 +32,6 @@ import numpy as np
 from functools import partial
 from itertools import repeat
 from datetime import datetime
-now = datetime.now
 
 import streams
 from bst_hvg import hvg as binary_search_hvg
@@ -38,11 +39,18 @@ from dc_hvg import hvg as divide_conquer_hvg
 from dt_hvg import hvg as dual_tree_hvg
 
 sys.setrecursionlimit(25000)  # needed for DC method
+now = datetime.now
 
 
 
 def generate_time_series(data_key, sources):
-	source, length, rep = data_key  # can ignore rep
+	'''
+	Uses a source stream name and a time series length specified in `data_key`
+	to generate a time series. A dictionary of sources `sources` provides access
+	to the actual source function.
+	'''
+
+	source, length, rep = data_key  # NB: can ignore rep
 
 	# Some sources may diverge, overflow, or exceed machine precision
 	# so try multiple times to generate a sequence that works 
@@ -66,7 +74,6 @@ def time_algorithm(experiment_params, dict_of_algs, dict_of_time_series):
 	Apply an HVG algorithm to data using one of the algs
 	and return the elapsed thread/process time.
 	'''
-	import time
 
 	alg, data_key = experiment_params
 	hvg_algorithm = dict_of_algs[alg]
@@ -209,13 +216,14 @@ def run_experiment(EXPERIMENT, TESTING=True):
 	# ~~~~~~~~~~~~~~~~~
 
 	data = {}
-	data_keys = [(source, length, rep) for source in sources for length in lengths
-		for rep in reps]
+	data_keys = [(source, length, rep) for source in sources for length in
+		lengths for rep in reps]
 
 	print(f'\tBegin generating experimental data: {now()}')
 
 	pool = get_context("spawn").Pool()
-	time_series_data = pool.starmap(generate_time_series, zip(data_keys, repeat(sources)), chunksize=1)
+	time_series_data = pool.starmap(generate_time_series, zip(data_keys,
+		repeat(sources)), chunksize=1)
 
 	for data_key, time_series in time_series_data:
 		if time_series is None:
@@ -246,7 +254,8 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 	f = open(results_filename, 'w')
 	writer = csv.writer(f)
-	csv_headers = ['source', 'length', 'rep', 'hvg_algorithm', 'time_in_seconds']
+	csv_headers = ['source', 'length', 'rep', 'hvg_algorithm',
+		'time_in_seconds']
 	writer.writerow(csv_headers)
 
 	completed = 0
