@@ -106,6 +106,7 @@ def logistic_attractor(n, a=3.9995, delay=1000, seed=None):
 
 
 def standard_map(n, K=1.2, seed=None):
+    # discrete standard map
     X = np.empty((n,2))
     np.random.seed(seed)
     X[0] = np.random.random(2)
@@ -126,7 +127,7 @@ def standard_map(n, K=1.2, seed=None):
 
 
 def lorenz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None, tmax=100):
-    # samples from the x component of a 3d Lorenz system
+    # samples from the x component of a continuous 3d Lorenz system
     
     # random initial condition
     np.random.seed(seed)
@@ -150,7 +151,7 @@ def lorenz_attractor(n, sigma=10, beta=8.0/3, rho=28, seed=None, tmax=100):
 
 
 def rossler_attractor(n, a=0.2, b=0.2, c=5.7, seed=None, tmax=100):
-    # samples from the z component of a 3d Rossler system
+    # samples from the z component of a continuous 3d Rossler system
 
     # random initial condition
     np.random.seed(seed)
