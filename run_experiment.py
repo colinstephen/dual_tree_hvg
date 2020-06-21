@@ -18,11 +18,6 @@ of HVG construction using different algorithms.
 
 
 
-# See https://pythonspeed.com/articles/python-multiprocessing/
-# on why mp pools should spawn new processes rather than forking them
-from multiprocessing import get_context
-from multiprocessing import freeze_support
-
 import sys
 import csv
 import time
@@ -40,6 +35,11 @@ from dt_hvg import hvg as dual_tree_hvg
 
 sys.setrecursionlimit(25000)  # needed for DC method
 now = datetime.now
+
+# See https://pythonspeed.com/articles/python-multiprocessing/
+# on why mp pools should spawn new processes rather than forking them
+# from multiprocessing import get_context
+from multiprocessing import Pool
 
 
 
@@ -200,6 +200,9 @@ def get_experiment(EXPERIMENT, TESTING=True):
 
 def run_experiment(EXPERIMENT, TESTING=True):
 
+	# Initialise the pool of workers
+	pool = Pool()
+
 	print(f'Begin running experiment {EXPERIMENT}: {now()}')
 	
 	experiment = get_experiment(EXPERIMENT, TESTING=TESTING)
@@ -221,18 +224,16 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 	print(f'\tBegin generating experimental data: {now()}')
 
-	pool = get_context("spawn").Pool()
 	time_series_data = pool.starmap(generate_time_series, zip(data_keys,
 		repeat(sources)), chunksize=1)
+	pool.close()
+	pool.join()
 
 	for data_key, time_series in time_series_data:
 		if time_series is None:
 			print(f'\t\tgenerating data with parameters {data_key} failed')
 		else:
 			data[data_key] = time_series
-
-	pool.close()
-	pool.join()
 
 	pickle.dump(data, open(data_filename, 'wb'))
 
@@ -248,9 +249,11 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 	print(f'\tBegin running experiments: {now()}')
 
-	pool = get_context("spawn").Pool()
+	pool = Pool()
 	runtime_results = pool.starmap(time_algorithm, zip(exp_keys, repeat(algs),
 		repeat(data)), chunksize=1)
+	pool.close()
+	pool.join()
 
 	f = open(results_filename, 'w')
 	writer = csv.writer(f)
@@ -269,18 +272,17 @@ def run_experiment(EXPERIMENT, TESTING=True):
 		if completed % 50 == 0:
 			print(f'\t\tCompleted {completed} of {total} at {now()}')
 
-	pool.close()
-	pool.join()
 	f.close()
+	pool.terminate()
 
 	print(f'\tCompleted saving results to {results_filename}: {now()}')
 
 	print(f'Completed running experiment {EXPERIMENT}: {now()}')
+
 	
 
 if __name__ == '__main__':
 
-	freeze_support()
 	experiment = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 	run_experiment(experiment)
 
