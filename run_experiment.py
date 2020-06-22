@@ -38,9 +38,9 @@ now = datetime.now
 
 # See https://pythonspeed.com/articles/python-multiprocessing/
 # on why mp pools should spawn new processes rather than forking them
-from multiprocessing import get_context
-# from multiprocessing import Pool
-Pool = get_context("spawn").Pool
+# from multiprocessing import get_context
+# Pool = get_context("spawn").Pool
+from multiprocessing import Pool
 
 
 def generate_time_series(experiment_data):
