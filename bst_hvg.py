@@ -75,6 +75,13 @@ class Node:
     if keyword == 'left': self.left = None
     if keyword == 'right': self.right = None
 
+  def __add__(self, other):
+    return merge(self, other)
+
+  def __iadd__(self, other):
+    self = merge(self, other)
+    return self
+
 
 
 def hvg(X, sort='mergesort'):
