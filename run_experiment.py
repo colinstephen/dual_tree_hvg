@@ -45,9 +45,7 @@ from multiprocessing import Pool
 
 def generate_time_series(experiment_data):
 	'''
-	Uses a source stream name and a time series length specified in `data_key`
-	to generate a time series. A dictionary of sources `sources` provides access
-	to the actual source function.
+	Given some setup parameters for experiments, generate relevant time series.
 
 	The argument `experiment_data` is a dict:
 		{
@@ -59,8 +57,8 @@ def generate_time_series(experiment_data):
 			'result': None
 		}
 	
-	The job of this function is to populate the value for
-	experiment_data['data']['time_series'] as a sequence of values.
+	The job of this function is to return the sequence to be saved as
+	experiment_data['data']['time_series'].
 
 	Some sources may diverge, overflow, or exceed machine precision
 	so try multiple times to generate a sequence that works 
@@ -82,10 +80,6 @@ def generate_time_series(experiment_data):
 
 	return time_series
 
-	# time_series_data['time_series'] = time_series
-
-	# return time_series_data
-
 
 
 def time_algorithm(experiment_data):
@@ -103,7 +97,7 @@ def time_algorithm(experiment_data):
 			'result': None
 		}
 	
-	The job of this function is to populate the value for
+	The job of this function is to return the value for
 	experiment_data['result'] as a duration in seconds.
 	'''
 	func = experiment_data['algorithm']['func']
@@ -358,6 +352,15 @@ def run_experiment(EXPERIMENT, TESTING=True):
 
 if __name__ == '__main__':
 
+	import os
+
+	if os.environ.get('TESTING') == 'False':
+		TESTING = False
+	else:
+		TESTING = True
+	print(f'Running experiment with TESTING=={TESTING}')
+
 	experiment = int(sys.argv[1]) if len(sys.argv) > 1 else 1
-	run_experiment(experiment)
+
+	run_experiment(experiment, TESTING)
 
