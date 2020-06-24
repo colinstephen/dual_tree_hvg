@@ -1,100 +1,107 @@
 import os
 import sys
+import csv
+import pickle
 import time
 import datetime
 import numpy as np
+from multiprocessing import Pool
+
 from dt_hvg import hvg as dual_tree_hvg
+from bst_hvg import hvg as binary_search_hvg
+
 now = datetime.datetime.now
 
-if os.environ.get('TESTING') == 'False':
-	TESTING = False
-else:
-	TESTING = True
-print(f'Running experiment with TESTING=={TESTING}')
+TESTING = True
 
-print(f'starting: {now()}')
-data = []
-with open('data/finance01.csv', 'r') as f:
-	for line in f:
-		data += [float(line.strip())]
-		if TESTING and len(data) >= 2**18:
-			break
-print(f'data in memory: {now()}')
+# ~~~~~~~~~~~~~~
+# Financial data
+# ~~~~~~~~~~~~~~
 
-# print(f'Starting baseline HVG timing: {now()}')
-# t0 = time.perf_counter()
-# _ = dual_tree_hvg(data)
-# t1 = time.perf_counter()
-# print(f'Baseline computation time is {t1-t0} seconds - completed at: {now()}')
+filenames = [f'data/finance0{i}.csv' for i in range(1,6)]
+algs = {'dual_tree_hvg': dual_tree_hvg, 'binary_search_hvg': binary_search_hvg}
+chunk_sizes = np.linspace(1000, 500000, num=50, dtype=int)
 
 if TESTING:
-	chunk_size = 2048
-else:
-	chunk_size = 2048
+	filenames = [f'data/finance0{i}_TESTING.csv' for i in range(1,6)]
+	chunk_sizes = np.linspace(32, 1024, num=5, dtype=int)
 
-hvgs = [dual_tree_hvg(data[n:n+chunk_size]) for n in range(0, len(data), chunk_size)]
-print(f'hvgs computed: {now()}')
-
-merge_result = hvgs[0]
-
-times = []
-for hvg in hvgs[1:]:
-	t0 = time.perf_counter()
-	merge_result = merge_result + hvg
-	# merge_result += hvg
-	times += [time.perf_counter() - t0]
-	if len(times) % 50 == 0:
-		print(f'\tcompleted {len(times)} merges of {len(hvgs)-1}')
-
-print(f'total time {np.sum(times)} and mean merge time {np.mean(times)}')
-sys.exit()
-
-def generate_hvgs(file_name, chunk_size, hvg_alg):
-
-	print(f'loading data from {file_name}: {now()}')
-	data = np.loadtxt(file_name)  # only a few million lines so load it all
-	print(f'completed data load: {now()}')
-	N = len(data)
-	if TESTING:
-		N = 40960
-	chunk_indexes = range(0, N, chunk_size)
-	num_chunks = len(chunk_indexes)
-	print(f'total length of data: {N}')
-	print(f'will generate {num_chunks} HVGs of length {chunk_size}')
-	return [hvg_alg(data[n:n+chunk_size]) for n in chunk_indexes]
-
-	# for n in chunk_indexes:
-	# 	x = data[n:n+chunk_size]
-	# 	hvg = hvg_alg(x)
-	# 	if 'A' in dir(hvg):
-	# 		_ = hvg.A
-	# 	yield hvg
+experimental_data = [
+	{
+		'filename': filename,
+		'algorithm': {'name': alg, 'function': algs[alg]},
+		'chunk_size': chunk_size,
+		'hvg_times': None,
+		'merge_times': None,
+		'merge_time_sum': -1,
+		'merge_time_std': -1
+	}
+	for filename in filenames for alg in algs for chunk_size in chunk_sizes
+]
 
 
 
-def time_merges(hvgs):
+def record_run_times(exp):
 
+	filename = exp['filename']
+	hvg_func = exp['algorithm']['function']
+	chunk_size = exp['chunk_size']
+	hvg_times = []
 	merge_times = []
-	merged_hvg = hvgs[0]  # no merging needed for the first one
-	_ = merged_hvg.A  # ensure adjacency is available
-	
-	for hvg in hvgs[1:]:
-		# time subsequent additions
-		_ = hvg.A
+
+	data = []
+	with open(filename, 'r') as f:
+		for line in f:
+			data += [float(line.strip())]
+	data = np.array(data)
+
+	hvgs = []
+	for n in range(0, len(data), chunk_size):
 		t0 = time.perf_counter()
-		merged_hvg = merged_hvg + hvg
+		hvgs += [hvg_func(data[n:n+chunk_size])]
+		hvg_times += [time.perf_counter() - t0]
+
+	merged = hvgs[0]
+	for hvg in hvgs[1:]:
+		t0 = time.perf_counter()
+		merged = merged + hvg
 		merge_times += [time.perf_counter() - t0]
+
+	return hvg_times, merge_times
+
+
+
+with Pool() as pool:
+	print(f'\tBegin running experiments: {now()}')
 	
-		if len(merge_times) % 50 == 0:
-			print(f'\tprocessed {len(merge_times)} HVGs: {now()}')
+	completed = 0
+	total = len(experimental_data)
+	
+	results = pool.imap_unordered(record_run_times, experimental_data)
+	
+	for exp in experimental_data:
 
-	return merge_times
+		hvg_times, merge_times = results.next()
+		exp['hvg_times'] = hvg_times
+		exp['merge_times'] = merge_times
+		exp['merge_time_sum'] = np.sum(merge_times)
+		exp['merge_time_std'] = np.std(merge_times)
+
+		completed += 1
+		if completed % 50 == 0:
+			print(f'\t\tCompleted {completed} of {total}: {now()}')
+
+	pool.close()
+	pool.join()
 
 
 
-if __name__ == '__main__':
-	hvgs = generate_hvgs('data/finance01.csv', 2**10, dual_tree_hvg)
-	times = time_merges(hvgs)
-	print(np.mean(times))
+results_filename = 'temp/merge_experiment_fiance_results.csv'
+if TESTING:
+	results_filename = 'temp/merge_experiment_finance_results_TESTING.csv'
+with open(results_filename, 'wb') as f:
+	pickle.dump(experimental_data, f)
+
+print(f'\tSaved finance results to {results_filename}: {now()}')
 
 
