@@ -231,6 +231,14 @@ class HVG:
     return hvg
 
 
+
+def hvg(X_init):
+  '''
+  Convenience function for importing elsewhere.
+  '''
+  return HVG(X_init)
+
+
 # ~~~~~~~~~~~~
 # PYTEST TESTS
 # ~~~~~~~~~~~~
