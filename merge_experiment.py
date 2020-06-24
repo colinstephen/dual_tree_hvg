@@ -96,9 +96,9 @@ with Pool() as pool:
 
 
 
-results_filename = 'temp/merge_experiment_fiance_results.csv'
+results_filename = 'temp/merge_experiment_fiance_results.pickle'
 if TESTING:
-	results_filename = 'temp/merge_experiment_finance_results_TESTING.csv'
+	results_filename = 'temp/merge_experiment_finance_results_TESTING.pickle'
 with open(results_filename, 'wb') as f:
 	pickle.dump(experimental_data, f)
 
