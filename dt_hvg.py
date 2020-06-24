@@ -18,6 +18,7 @@ arbitrary size, and to add (merge) existing HVG graphs quickly.
 
 import sys
 import numpy as np
+import graph_tool as gt
 from collections import ChainMap
 from random import random
 
@@ -47,14 +48,19 @@ class HVG:
     Optionally takes an initial sequence of values `X_init` to build the graph.
     '''
 
-    self.V = {}  # stores vertices and their time series values {v: x}
-    self.vis_p = []  # longest strictly increasing subsequence from `self.V[0]`
-    self.vis_f = []  # longest strictly decreasing subsequence to `self.V[-1]`
-    self.max_val = -np.inf  # update to avoid multiple calls to `max(self.V)`
-    self.neighbour_weight = np.inf  # value of `w` for edges `[u, u+1, w]`
-    self.E = {}  # stores weighted HVG edges `{(u, v): w}` for u,v in self.V
+    # Internal representation
+    self.V = {}  # stores vertices and their time series values {v: vx}
+    self.E = {}  # stores weighted edges `{(u, v): w}` for u,v in self.V.keys()
+    self.vis_p = []  # (vx,v) value-vertex pairs that can see the "past"
+    self.vis_f = []  # (vx,v) value-vertex pairs that can see the "future"
+    self.max_val = -np.inf
+    self.neighbour_weight = np.inf
 
-    # If a sequence was supplied, use it to build the graph.
+    # Graph-Tool representation
+    self._G = gt.Graph()
+    self._gt_weights = self._G.new_edge_property("double")
+
+    # If a sequence was supplied, use it to build a graph.
     if X_init is not None and len(X_init):
       self.add_batch(X_init)
 
@@ -75,9 +81,21 @@ class HVG:
     return self.merge(other, copy=True)
 
 
+  @property
+  def G(self):
+    '''
+    Provide a Graph-Tool Graph() instance for further analysis.
+    '''
+
+    if len(self._G.get_vertices()) != len(self.V):
+      self._G.clear()
+      self._G.add_edge_list(self.E, eprops=[self._gt_weights], hashed=True)
+    return self._G
+  
+
   def add_one(self, vx, v=None):
     '''
-    Extend this HVG by adding edges induced by a new value `vx`.
+    Extend this HVG by adding edges induced by a single new value `vx`.
 
     Optionally takes a vertex label for the new vertex.
     '''
@@ -87,15 +105,15 @@ class HVG:
     self.V[v] = vx
         
     if vx > self.max_val:
-      # Update the longest strictly increasing subsequence from `self.V[0]`.
+      # Update the list of vertices that can see the "past"
       self.vis_p += [(vx, v)]
       self.max_val = vx
 
     neighbour_added = False
     while self.vis_f:
-      # There is a longest strictly decreasing subsequence to `self.V[-1]`.
-      # Process it in reverse order until an element exceeds the
-      #   new value `vx`. Then all earlier elements do too, so break out.
+      # Some previous vertices that could see the "future" now may be blocked.
+      # Process them in reverse order until an element exceeds the
+      # new value `vx`. Then all earlier elements do too, so break out.
 
       ux, u = self.vis_f[-1]
       
@@ -119,16 +137,16 @@ class HVG:
           self.E[u, v] = self.neighbour_weight
         break
 
-    self.vis_f += [(vx,v)]  # Vertex `v` extends the decreasing subsequence.
+    self.vis_f += [(vx,v)]  # Vertex `v` can see the "future" for now.
 
     return self
 
 
   def add_batch(self, batch, vertices=None):
     '''
-    Extend this HVG according to a new batch (list) of sequence values.
+    Extend this HVG according to a new (iterable) batch of sequence values.
 
-    Optionally takes a list of vertex labels to apply to the new vertices. 
+    Optionally takes a list of (iterable) vertex labels for the new vertices. 
     '''
     if vertices is None:
       for x in batch:
@@ -159,31 +177,36 @@ class HVG:
       hvg = self
 
     # Use a ChainMap to store merged edge and vertex collections.
+    # This is faster than merging dictionaries with `update()`.
     if isinstance(hvg.E, dict):
       hvg.E = ChainMap(self.E)
     if isinstance(hvg.V, dict):
       hvg.V = ChainMap(self.V)
 
-    # Concatenate the dicts of edges and the time series
+    # Concatenate the edges and the time series
     hvg.E = hvg.E.new_child(other.E)
     hvg.V = hvg.V.new_child(other.V)
 
     # Some nodes from the two input graphs will be visible to one another.
-    # We treat the possibly-visible values as a subsequence and create its HVG.    
+    # We treat the possibly-visible values as a subsequence and build its HVG.    
     join_vtx = self.vis_f + other.vis_p  # list of (vx,v) value-vertex pairs
     join_hvg = HVG()
-    vals, vertices = zip(*join_vtx)
-    join_hvg.add_batch(vals, vertices)
+    vtx_vals, vtx_labels = zip(*join_vtx)
+    join_hvg.add_batch(vtx_vals, vtx_labels)
 
     # Now use this joining HVG to infer the extra edges in the merged HVG. 
     merge_edges = {}
+
+    # The boundary vertices are always joined since they are now neighbours.
     merge_edges[self.vis_f[-1][1], other.vis_p[0][1]] = self.neighbour_weight
+
+    # The other vertices merge whenever they are not neighbours in `join_hvg`.
     for (u, v), w in join_hvg.E.items():
       if w != self.neighbour_weight:
         merge_edges[u, v] = w
     hvg.E = hvg.E.new_child(merge_edges)
     
-    # Compute the rest of the properties on the returned instance.
+    # Compute the remaining properties on the returned instance.
     vis_p = []
     for vx, v in reversed(other.vis_p):
       if vx > self.max_val:
