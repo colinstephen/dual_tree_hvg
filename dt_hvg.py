@@ -44,27 +44,19 @@ class HVG:
     '''
     Sets up internal machinery for building HVGs from sequences.
 
-    Optionally takes an initial sequence `X_init` to build the graph.
+    Optionally takes an initial sequence of values `X_init` to build the graph.
     '''
 
-    self.X = {}  # the underlying vertices and their time series values (v, x)
-    self.vis_p = []  # longest strictly increasing subsequence from `self.X[0]`
-    self.vis_f = []  # longest strictly decreasing subsequence to `self.X[-1]`
-    self.max_val = -np.inf  # update to avoid multiple calls to `max(self.X)`
+    self.V = {}  # stores vertices and their time series values {v: x}
+    self.vis_p = []  # longest strictly increasing subsequence from `self.V[0]`
+    self.vis_f = []  # longest strictly decreasing subsequence to `self.V[-1]`
+    self.max_val = -np.inf  # update to avoid multiple calls to `max(self.V)`
     self.neighbour_weight = np.inf  # value of `w` for edges `[u, u+1, w]`
-    self.E = {}  # store weighted HVG edges `(u, v): w`
+    self.E = {}  # stores weighted HVG edges `{(u, v): w}` for u,v in self.V
 
     # If a sequence was supplied, use it to build the graph.
     if X_init is not None and len(X_init):
       self.add_batch(X_init)
-
-
-  def __len__(self):
-    '''
-    The length of an HVG is the number of its vertices.
-    '''
-
-    return len(self.X)
 
 
   def __iadd__(self, other):
@@ -82,26 +74,28 @@ class HVG:
 
     return self.merge(other, copy=True)
 
-  # @profile
+
   def add_one(self, vx, v=None):
     '''
-    Extend this HVG by adding edges induced by a new value `x`.
+    Extend this HVG by adding edges induced by a new value `vx`.
+
+    Optionally takes a vertex label for the new vertex.
     '''
 
     v = v or random()
 
-    self.X[v] = vx
+    self.V[v] = vx
         
     if vx > self.max_val:
-      # Update the longest strictly increasing subsequence from `self.X[0]`.
+      # Update the longest strictly increasing subsequence from `self.V[0]`.
       self.vis_p += [(vx, v)]
       self.max_val = vx
 
     neighbour_added = False
     while self.vis_f:
-      # There is a longest strictly decreasing subsequence to `self.X[-1]`.
+      # There is a longest strictly decreasing subsequence to `self.V[-1]`.
       # Process it in reverse order until an element exceeds the
-      #   new value `vx`. Then all earlier elements do too.
+      #   new value `vx`. Then all earlier elements do too, so break out.
 
       ux, u = self.vis_f[-1]
       
@@ -133,6 +127,8 @@ class HVG:
   def add_batch(self, batch, vertices=None):
     '''
     Extend this HVG according to a new batch (list) of sequence values.
+
+    Optionally takes a list of vertex labels to apply to the new vertices. 
     '''
     if vertices is None:
       for x in batch:
@@ -143,38 +139,43 @@ class HVG:
 
     return self
 
-  # @profile
+
   def merge(self, other, copy=True):
     '''
-    Merge an `other` HVG to the right of the current HVG
+    Merge an `other` HVG to the right of the current HVG.
+
+    Optionally re-use and extend the current HVG instance with `copy=False`.
     '''
 
     assert self.neighbour_weight == other.neighbour_weight
 
     if copy:
+      # Create a new HVG instance to return
       hvg = HVG()
       hvg.E = self.E
-      hvg.X = self.X
+      hvg.V = self.V
     else:
+      # We will extend the current HVG instance
       hvg = self
 
+    # Use a ChainMap to store merged edge and vertex collections.
     if isinstance(hvg.E, dict):
       hvg.E = ChainMap(self.E)
-    if isinstance(hvg.X, dict):
-      hvg.X = ChainMap(self.X)
+    if isinstance(hvg.V, dict):
+      hvg.V = ChainMap(self.V)
 
     # Concatenate the dicts of edges and the time series
     hvg.E = hvg.E.new_child(other.E)
-    hvg.X = hvg.X.new_child(other.X)
+    hvg.V = hvg.V.new_child(other.V)
 
     # Some nodes from the two input graphs will be visible to one another.
     # We treat the possibly-visible values as a subsequence and create its HVG.    
-    join_vertices = self.vis_f + other.vis_p  # list of (vx,v) value-vertex pairs
+    join_vtx = self.vis_f + other.vis_p  # list of (vx,v) value-vertex pairs
     join_hvg = HVG()
-    vals, vertices = zip(*join_vertices)
+    vals, vertices = zip(*join_vtx)
     join_hvg.add_batch(vals, vertices)
 
-    # Now use this small HVG to infer the edges in the large merged HVG. 
+    # Now use this joining HVG to infer the extra edges in the merged HVG. 
     merge_edges = {}
     merge_edges[self.vis_f[-1][1], other.vis_p[0][1]] = self.neighbour_weight
     for (u, v), w in join_hvg.E.items():
@@ -182,7 +183,7 @@ class HVG:
         merge_edges[u, v] = w
     hvg.E = hvg.E.new_child(merge_edges)
     
-    # Compute the other combined properties of the new HVG
+    # Compute the rest of the properties on the returned instance.
     vis_p = []
     for vx, v in reversed(other.vis_p):
       if vx > self.max_val:
@@ -191,7 +192,6 @@ class HVG:
         break
     hvg.vis_p = self.vis_p + list(reversed(vis_p))
 
-    # hvg.vis_f = [(vx, v) for vx, v in self.vis_f if vx > other.max_val] + other.vis_f
     vis_f = []
     for vx, v in self.vis_f:
       if vx > other.max_val:
@@ -204,10 +204,5 @@ class HVG:
     hvg.neighbour_weight = self.neighbour_weight
 
     return hvg
-
-
-
-def hvg(X):
-  return HVG(X)
 
 
