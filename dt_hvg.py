@@ -41,7 +41,7 @@ class HVG:
   '''
 
 
-  def __init__(self, X_init=None):
+  def __init__(self, X_init=None, neighbour_weight=np.inf):
     '''
     Sets up internal machinery for building HVGs from sequences.
 
@@ -54,7 +54,7 @@ class HVG:
     self.vis_p = []  # (vx,v) value-vertex pairs that can see the "past"
     self.vis_f = []  # (vx,v) value-vertex pairs that can see the "future"
     self.max_val = -np.inf
-    self.neighbour_weight = np.inf
+    self.neighbour_weight = neighbour_weight
 
     # Graph-Tool representation
     self._G = gt.Graph()
@@ -100,7 +100,8 @@ class HVG:
     Optionally takes a vertex label for the new vertex.
     '''
 
-    v = v or random()
+    if v is None:
+      v = random()
 
     self.V[v] = vx
         
@@ -184,6 +185,7 @@ class HVG:
       hvg.V = ChainMap(self.V)
 
     # Concatenate the edges and the time series
+    # Note that *vertex labels must be unique*
     hvg.E = hvg.E.new_child(other.E)
     hvg.V = hvg.V.new_child(other.V)
 
@@ -227,5 +229,72 @@ class HVG:
     hvg.neighbour_weight = self.neighbour_weight
 
     return hvg
+
+
+# ~~~~~~~~~~~~
+# PYTEST TESTS
+# ~~~~~~~~~~~~
+
+'''
+Run tests from the command line with `$ pytest dt_hvg.py`.
+'''
+
+import pytest
+
+
+def test_hvg_creation():
+
+  test_data = [6,1,3,2,4,1,5,3]
+  vertices = range(len(test_data))
+  hvg = HVG().add_batch(test_data, vertices)
+  nw = hvg.neighbour_weight
+
+  assert hvg.V == {0:6, 1:1, 2:3, 3:2, 4:4, 5:1, 6:5, 7:3}
+  assert hvg.E == {(0,1):nw, (1,2):nw, (2,3):nw, (3,4):nw, (4,5):nw, (5,6):nw,
+    (6,7):nw, (0,2):2, (0,4):1, (0,6):1, (2,4):1, (4,6):3}
+
+  assert hvg.max_val == 6
+  assert hvg.vis_p == [(6,0)]
+  assert hvg.vis_f == [(6,0), (5,6), (3,7)]
+
+
+def test_hvg_merge():
+
+  data1 = [6,1,3,2]
+  data2 = [4,1,5,3]
+
+  hvg1 = HVG().add_batch(data1, range(0,4))
+  hvg2 = HVG().add_batch(data2, range(4,9))
+
+  hvg = hvg1 + hvg2
+  nw = hvg.neighbour_weight
+
+  assert isinstance(hvg.V, ChainMap)
+  assert isinstance(hvg.E, ChainMap)
+
+  assert hvg.V == {0:6, 1:1, 2:3, 3:2, 4:4, 5:1, 6:5, 7:3}
+  assert hvg.E == {(0,1):nw, (1,2):nw, (2,3):nw, (3,4):nw, (4,5):nw, (5,6):nw,
+    (6,7):nw, (0,2):2, (0,4):1, (0,6):1, (2,4):1, (4,6):3}
+
+  assert hvg.max_val == 6
+  assert hvg.vis_p == [(6,0)]
+  assert hvg.vis_f == [(6,0), (5,6), (3,7)]
+
+
+def test_neighbour_weights_match_on_merge():
+
+  data1 = [6,1,3,2]
+  data2 = [4,1,5,3]
+
+  nw = 1
+  hvg1 = HVG(neighbour_weight=nw).add_batch(data1, range(0,4))
+  hvg2 = HVG(neighbour_weight=nw).add_batch(data2, range(4,9))
+
+  hvg = hvg1 + hvg2  # should not raise any errors
+
+  hvg2 = HVG(neighbour_weight=nw+1).add_batch(data2, range(4,9))
+
+  with pytest.raises(AssertionError):
+    hvg = hvg1 + hvg2  # should now raise an assertion error
 
 
