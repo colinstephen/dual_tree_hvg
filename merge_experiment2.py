@@ -19,12 +19,12 @@ TESTING = True
 # EEG data
 # ~~~~~~~~
 
-filenames = [f'data/eeg0{i}.csv' for i in range(1,6)]
+filenames = [f'data/eeg0{i}.csv.gz' for i in range(1,6)]
 algs = {'dual_tree_hvg': dual_tree_hvg, 'binary_search_hvg': binary_search_hvg}
 chunk_sizes = np.linspace(1000, 500000, num=50, dtype=int)
 
 if TESTING:
-	filenames = [f'data/eeg0{i}_TESTING.csv' for i in range(1,6)]
+	filenames = [f'data/eeg0{i}_TESTING.csv.gz' for i in range(1,6)]
 	chunk_sizes = np.linspace(32, 1024, num=5, dtype=int)
 
 experimental_data = [
@@ -50,11 +50,7 @@ def record_run_times(exp):
 	hvg_times = []
 	merge_times = []
 
-	data = []
-	with open(filename, 'r') as f:
-		for line in f:
-			data += [float(line.strip())]
-	data = np.array(data)
+	data = np.loadtxt(filename)
 
 	hvgs = []
 	for n in range(0, len(data), chunk_size):
