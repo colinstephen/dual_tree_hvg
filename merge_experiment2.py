@@ -11,7 +11,7 @@ from dt_hvg import hvg as dual_tree_hvg
 from bst_hvg import hvg as binary_search_hvg
 
 now = datetime.datetime.now
-sys.setrecursionlimit(2500)  # needed for search tree method
+sys.setrecursionlimit(25000)  # needed for search tree method
 
 TESTING = True
 
