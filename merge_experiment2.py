@@ -21,11 +21,11 @@ TESTING = True
 
 filenames = [f'data/eeg0{i}.csv.gz' for i in range(1,6)]
 algs = {'dual_tree_hvg': dual_tree_hvg, 'binary_search_hvg': binary_search_hvg}
-chunk_sizes = np.linspace(1000, 500000, num=50, dtype=int)
+chunk_sizes = np.linspace(1000, 499999, num=50, dtype=int)
 
 if TESTING:
 	filenames = [f'data/eeg0{i}_TESTING.csv.gz' for i in range(1,6)]
-	chunk_sizes = np.linspace(32, 1024, num=5, dtype=int)
+	chunk_sizes = np.linspace(32, 1023, num=5, dtype=int)
 
 experimental_data = [
 	{
@@ -33,9 +33,7 @@ experimental_data = [
 		'algorithm': {'name': alg, 'function': algs[alg]},
 		'chunk_size': chunk_size,
 		'hvg_times': None,
-		'merge_times': None,
-		'merge_time_sum': -1,
-		'merge_time_std': -1
+		'merge_times': None
 	}
 	for filename in filenames for alg in algs for chunk_size in chunk_sizes
 ]
@@ -74,15 +72,13 @@ with Pool() as pool:
 	completed = 0
 	total = len(experimental_data)
 	
-	results = pool.imap_unordered(record_run_times, experimental_data)
+	results = pool.imap(record_run_times, experimental_data)
 	
 	for exp in experimental_data:
 
 		hvg_times, merge_times = results.next()
 		exp['hvg_times'] = hvg_times
 		exp['merge_times'] = merge_times
-		exp['merge_time_sum'] = np.sum(merge_times)
-		exp['merge_time_std'] = np.std(merge_times)
 
 		completed += 1
 		if completed % 50 == 0:
@@ -93,12 +89,36 @@ with Pool() as pool:
 
 
 
-results_filename = 'temp/merge_experiment_eeg_results.pickle'
+results_datafile = 'temp/merge_experiment_eeg_results.pickle'
 if TESTING:
-	results_filename = 'temp/merge_experiment_eeg_results_TESTING.pickle'
-with open(results_filename, 'wb') as f:
+	results_datafile = 'temp/merge_experiment_eeg_results_TESTING.pickle'
+with open(results_datafile, 'wb') as f:
 	pickle.dump(experimental_data, f)
+print(f'\tSaved eeg result data to {results_datafile}: {now()}')
 
-print(f'\tSaved eeg results to {results_filename}: {now()}')
 
-
+results_csvfile = 'temp/merge_experiment_eeg_results.csv'
+if TESTING:
+	results_csvfile = 'temp/merge_experiment_eeg_results_TESTING.csv'
+with open(results_csvfile, 'w') as f:
+	writer = csv.writer(f)
+	writer.writerow(['filename', 'algorithm', 'chunk_size', 'hvg_total',
+		'hvg_mean', 'hvg_median' 'hvg_std', 'merge_total','merge_mean',
+		'merge_median', 'merge_std'])
+	for exp in experimental_data:
+		fn = exp['filename']
+		alg = exp['algorithm']['name']
+		chnk = exp['chunk_size']
+		hvg_times = exp['hvg_times'][:-1]  # last HVG is a different length
+		hvg_sum = np.sum(hvg_times)
+		hvg_mean = np.mean(hvg_times)
+		hvg_med = np.median(hvg_times)
+		hvg_std = np.std(hvg_times)
+		merge_times = exp['merge_times'][:-1]  # final merge is shorter
+		merge_sum = np.sum(merge_times)
+		merge_mean = np.mean(merge_times)
+		merge_med = np.median(merge_times)
+		merge_std = np.std(merge_times)
+		writer.writerow([fn, alg, chnk, hvg_sum, hvg_mean, hvg_med, hvg_std,
+			merge_sum, merge_mean, merge_med, merge_std])
+print(f'\tSaved eeg summary results to {results_csvfile}: {now()}')
