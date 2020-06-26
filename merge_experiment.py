@@ -33,9 +33,7 @@ experimental_data = [
 		'algorithm': {'name': alg, 'function': algs[alg]},
 		'chunk_size': chunk_size,
 		'hvg_times': None,
-		'merge_times': None,
-		'merge_time_sum': -1,
-		'merge_time_std': -1
+		'merge_times': None
 	}
 	for filename in filenames for alg in algs for chunk_size in chunk_sizes
 ]
