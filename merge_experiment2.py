@@ -103,7 +103,7 @@ if TESTING:
 with open(results_csvfile, 'w') as f:
 	writer = csv.writer(f)
 	writer.writerow(['filename', 'algorithm', 'chunk_size', 'hvg_total',
-		'hvg_mean', 'hvg_median' 'hvg_std', 'merge_total','merge_mean',
+		'hvg_mean', 'hvg_median', 'hvg_std', 'merge_total','merge_mean',
 		'merge_median', 'merge_std'])
 	for exp in experimental_data:
 		fn = exp['filename']
