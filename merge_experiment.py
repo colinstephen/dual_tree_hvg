@@ -21,7 +21,7 @@ TESTING = True
 
 filenames = [f'data/finance0{i}.csv.gz' for i in range(1,6)]
 algs = {'dual_tree_hvg': dual_tree_hvg, 'binary_search_hvg': binary_search_hvg}
-chunk_sizes = np.linspace(1000, 499999, num=50, dtype=int)
+chunk_sizes = range(5000,500000,5000)
 
 if TESTING:
 	filenames = [f'data/finance0{i}_TESTING.csv.gz' for i in range(1,6)]
