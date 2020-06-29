@@ -174,3 +174,9 @@ def rossler_attractor(n, a=0.2, b=0.2, c=5.7, seed=None, tmax=100):
 
 
 
+def two_cycles(n, noise_factor):
+    cycles = np.sin(np.linspace(0,4*np.pi,n))
+    noise = random(n) * noise_factor
+    return cycles + noise
+
+
