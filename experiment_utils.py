@@ -3,7 +3,6 @@
 
 
 
-import sys
 import csv
 import time
 import pickle
@@ -12,7 +11,6 @@ from multiprocessing import Pool
 
 
 
-sys.setrecursionlimit(25000)  # needed for DC and BST methods
 now = datetime.now
 
 
@@ -108,7 +106,7 @@ def record_timings(experiment_data, results_file, data_file):
 	
 		with Pool() as pool:
 
-			print(f'\tBegin running experiments: {now()}')
+			print(f'\tBegin timing algorithms: {now()}')
 			
 			completed = 0
 			total = len(experiment_data)
