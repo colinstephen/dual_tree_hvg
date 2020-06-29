@@ -64,7 +64,7 @@ def main():
 		sources[f'fbm_{hurst:.2f}'] = partial(streams.fbm, hurst=hurst)
 
 	for tmax in [2**n for n in range(8,15)]:
-		sources[f'rossler_{tmax}'] = partial(streams.rossler, tmax=tmax)
+		sources[f'rossler_{tmax}'] = partial(streams.rossler_attractor, tmax=tmax)
 
 	for noise_factor in range(0,65,2):
 		sources[f'noisy_cycles_{noise_factor}'] = streams.noisy(streams.two_cycles,
