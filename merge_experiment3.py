@@ -1,0 +1,150 @@
+import os
+import sys
+import csv
+import pickle
+import time
+import datetime
+import numpy as np
+from multiprocessing import Pool
+
+from dt_hvg import hvg as dual_tree_hvg
+from bst_hvg import hvg as binary_search_hvg
+
+import streams
+
+now = datetime.datetime.now
+sys.setrecursionlimit(25000)  # needed for search tree method
+
+TESTING = True
+
+# ~~~~~~~~
+# FBM Data
+# ~~~~~~~~
+
+algs = {'dual_tree_hvg': dual_tree_hvg, 'binary_search_hvg': binary_search_hvg}
+
+if TESTING:
+	reps = 1
+	hurst_exponents = np.linspace(0.2, 0.8, num=3)
+	chunk_sizes = range(2**5, 2**9 + 1, 2**5)
+	data_length = 2**10
+else:
+	reps = 3
+	hurst_exponents = np.linspace(0.2, 0.8, num=13)
+	chunk_sizes = range(2**12, 2**19 + 1, 2**12)
+	data_length = 2**20
+
+experimental_data = []
+
+for rep in range(reps):
+	for hurst in hurst_exponents:
+		data = streams.fbm(data_length, hurst=hurst)
+		for chunk_size in chunk_sizes:
+			for alg in algs:
+				experimental_data += [{
+					'rep': rep,
+					'hurst_exponent': hurst,
+					'algorithm': {'name': alg, 'function': algs[alg]},
+					'chunk_size': chunk_size,
+					'hvg_times': None,
+					'merge_times': None,
+					'data': data
+				}]
+
+
+def record_run_times(exp):
+
+	hvg_func = exp['algorithm']['function']
+	chunk_size = exp['chunk_size']
+	data = exp['data']
+	hvg_times = []
+	merge_times = []
+
+	# compute the small HVGs to be merged
+	hvgs = []
+	for n in range(0, len(data), chunk_size):
+		t0 = time.perf_counter()
+		hvg = hvg_func(data[n:n+chunk_size])
+		hvg_times += [time.perf_counter() - t0]
+		hvgs += [hvg]
+
+	# then repeatedly merge them together
+	merged = hvgs[0]
+	for hvg in hvgs[1:]:
+		t0 = time.perf_counter()
+		merged += hvg
+		merge_times += [time.perf_counter() - t0]
+
+	return hvg_times, merge_times
+
+
+def main():
+	with Pool() as pool:
+		print(f'\tBegin running experiments: {now()}')
+		
+		completed = 0
+		total = len(experimental_data)
+
+		results = pool.imap(record_run_times, experimental_data)
+		
+		for exp in experimental_data:
+
+			hvg_times, merge_times = results.next()
+			exp['hvg_times'] = hvg_times
+			exp['merge_times'] = merge_times
+
+			completed += 1
+			if completed % 50 == 0:
+				print(f'\t\tCompleted {completed} of {total}: {now()}')
+
+		pool.close()
+		pool.join()
+
+	if TESTING:
+		results_datafile = 'temp/merge_experiment_fbm_results_TESTING.pickle'
+	else:
+		results_datafile = 'temp/merge_experiment_fbm_results.pickle'
+
+	# forget the data before saving as we can just re-generate
+	for instance in experimental_data:
+		del instance['data']
+
+	with open(results_datafile, 'wb') as f:
+		pickle.dump(experimental_data, f)
+
+	print(f'\tSaved fbm merge result data to {results_datafile}: {now()}')
+
+
+	if TESTING:
+		results_csvfile = 'temp/merge_experiment_fbm_results_TESTING.csv'
+	else:
+		results_csvfile = 'temp/merge_experiment_fbm_results.csv'
+
+	with open(results_csvfile, 'w') as f:
+		writer = csv.writer(f)
+		writer.writerow(['rep', 'hurst_exponent', 'algorithm', 'chunk_size', 'hvg_total',
+			'hvg_mean', 'hvg_median', 'hvg_std', 'merge_total','merge_mean',
+			'merge_median', 'merge_std'])
+		for exp in experimental_data:
+			rep = exp['rep']
+			hurst_exponent = exp['hurst_exponent']
+			algorithm = exp['algorithm']['name']
+			chunk_size = exp['chunk_size']
+			hvg_times = exp['hvg_times']
+			hvg_sum = np.sum(hvg_times)
+			hvg_mean = np.mean(hvg_times)
+			hvg_median = np.median(hvg_times)
+			hvg_std = np.std(hvg_times)
+			merge_times = exp['merge_times']
+			merge_sum = np.sum(merge_times)
+			merge_mean = np.mean(merge_times)
+			merge_median = np.median(merge_times)
+			merge_std = np.std(merge_times)
+			writer.writerow([rep, hurst_exponent, algorithm, chunk_size, hvg_sum,
+				hvg_mean, hvg_median, hvg_std, merge_sum, merge_mean, merge_median,
+				merge_std])
+
+	print(f'\tSaved fbm summary results to {results_csvfile}: {now()}')
+
+if __name__ == '__main__':
+	main()

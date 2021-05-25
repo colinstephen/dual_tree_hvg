@@ -80,6 +80,9 @@ class Node:
   def __add__(self, other):
     return merge([self, other])
 
+  def __iadd__(self, other):
+    return merge([self, other])
+
 
 
 def hvg(X, sort='mergesort'):
