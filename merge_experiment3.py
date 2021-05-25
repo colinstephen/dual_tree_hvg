@@ -1,3 +1,4 @@
+
 import os
 import sys
 import csv
@@ -15,42 +16,45 @@ import streams
 now = datetime.datetime.now
 sys.setrecursionlimit(25000)  # needed for search tree method
 
-TESTING = True
+TESTING = False
 
 # ~~~~~~~~
 # FBM Data
 # ~~~~~~~~
 
-algs = {'dual_tree_hvg': dual_tree_hvg, 'binary_search_hvg': binary_search_hvg}
+def setup_data():
+	algs = {'dual_tree_hvg': dual_tree_hvg, 'binary_search_hvg': binary_search_hvg}
 
-if TESTING:
-	reps = 1
-	hurst_exponents = np.linspace(0.2, 0.8, num=3)
-	chunk_sizes = range(2**5, 2**9 + 1, 2**5)
-	data_length = 2**10
-else:
-	reps = 3
-	hurst_exponents = np.linspace(0.2, 0.8, num=13)
-	chunk_sizes = range(2**12, 2**19 + 1, 2**12)
-	data_length = 2**20
+	if TESTING:
+		reps = 1
+		hurst_exponents = np.linspace(0.2, 0.8, num=3)
+		chunk_sizes = range(2**5, 2**9 + 1, 2**5)
+		data_length = 2**10
+	else:
+		reps = 3
+		hurst_exponents = np.linspace(0.2, 0.8, num=13)
+		chunk_sizes = range(2**12, 2**19 + 1, 2**12)
+		data_length = 2**20
 
-experimental_data = []
+	experimental_data = []
 
-for rep in range(reps):
-	for hurst in hurst_exponents:
-		data = streams.fbm(data_length, hurst=hurst)
-		for chunk_size in chunk_sizes:
-			for alg in algs:
-				experimental_data += [{
-					'rep': rep,
-					'hurst_exponent': hurst,
-					'algorithm': {'name': alg, 'function': algs[alg]},
-					'chunk_size': chunk_size,
-					'hvg_times': None,
-					'merge_times': None,
-					'data': data
-				}]
+	for rep in range(reps):
+		for hurst in hurst_exponents:
+			print(f'Generating data for rep {rep} and Hurst exponent {hurst} at {now()}')
+			data = streams.fbm(data_length, hurst=hurst)
+			for chunk_size in chunk_sizes:
+				for alg in algs:
+					experimental_data += [{
+						'rep': rep,
+						'hurst_exponent': hurst,
+						'algorithm': {'name': alg, 'function': algs[alg]},
+						'chunk_size': chunk_size,
+						'hvg_times': None,
+						'merge_times': None,
+						'data': data
+					}]
 
+	return experimental_data
 
 def record_run_times(exp):
 
@@ -77,8 +81,7 @@ def record_run_times(exp):
 
 	return hvg_times, merge_times
 
-
-def main():
+def run_experiments(experimental_data):
 	with Pool() as pool:
 		print(f'\tBegin running experiments: {now()}')
 		
@@ -100,6 +103,7 @@ def main():
 		pool.close()
 		pool.join()
 
+def save_outputs(experimental_data):
 	if TESTING:
 		results_datafile = 'temp/merge_experiment_fbm_results_TESTING.pickle'
 	else:
@@ -113,7 +117,6 @@ def main():
 		pickle.dump(experimental_data, f)
 
 	print(f'\tSaved fbm merge result data to {results_datafile}: {now()}')
-
 
 	if TESTING:
 		results_csvfile = 'temp/merge_experiment_fbm_results_TESTING.csv'
@@ -147,4 +150,6 @@ def main():
 	print(f'\tSaved fbm summary results to {results_csvfile}: {now()}')
 
 if __name__ == '__main__':
-	main()
+	data = setup_data()
+	run_experiments(data)
+	save_outputs(data)
