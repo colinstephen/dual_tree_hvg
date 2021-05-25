@@ -1,8 +1,0 @@
-# This file may be used to create an environment using:
-# $ conda create --name <env> --file <this file>
-# platform: osx-64
-fbm=0.3.0=pypi_0
-graph-tool
-numpy
-python=3.9
-scipy

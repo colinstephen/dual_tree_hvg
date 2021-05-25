@@ -1,0 +1,10 @@
+# run: conda env create --file environment.yml
+name: linear-hvg
+dependencies:
+- python>=3.9
+- graph-tool
+- pip
+- numpy
+- scipy
+- pip:
+  - fbm
