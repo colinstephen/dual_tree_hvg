@@ -1,10 +1,13 @@
-# run: conda env create --file environment.yml
+# run: conda env create --file environment.yaml
 name: linear-hvg
+channels:
+  - conda-forge
+  - defaults
 dependencies:
-- python>=3.9
-- graph-tool
-- pip
-- numpy
-- scipy
-- pip:
-  - fbm
+  - python>=3.9
+  - graph-tool
+  - numpy
+  - scipy
+  - pip
+  - pip:
+    - fbm
