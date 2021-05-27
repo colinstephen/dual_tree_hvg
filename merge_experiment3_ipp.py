@@ -48,9 +48,9 @@ else:
 
 print(f'Beginning data generation: {now()}')
 
-@ipp.require(data_length=data_length)
+import streams
+@ipp.require(streams, data_length=data_length)
 def get_data_parallel(hurst):
-	import streams
 	return streams.fbm(data_length, hurst=hurst)
 
 fbm_data = v.map_sync(get_data_parallel, hurst_exponents)
