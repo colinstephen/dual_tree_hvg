@@ -8,6 +8,7 @@ import ipyparallel as ipp
 slurm_profile_is_available = os.path.exists(os.path.expanduser('~/.ipython/profile_slurm/'))
 c = ipp.Client(profile="slurm" if slurm_profile_is_available else "default")
 v = c[:]
+print(v.apply_sync(os.getcwd))
 
 import sys
 import csv
