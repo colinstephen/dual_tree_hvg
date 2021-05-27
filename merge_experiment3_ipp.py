@@ -31,7 +31,7 @@ dv.map_sync(os.chdir, [dir_path] * len(v))
 
 from dt_hvg import hvg as dual_tree_hvg
 from bst_hvg import hvg as binary_search_hvg
-sys.setrecursionlimit(25000)  # needed for bst_hvg to work on unbalanced data
+sys.setrecursionlimit(2**20)  # needed for bst_hvg to work on unbalanced data
 
 hvg_algorithms = {
 	'dual_tree_hvg': dual_tree_hvg,
