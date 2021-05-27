@@ -1,3 +1,5 @@
+from multiprocessing import set_start_method
+set_start_method("spawn")
 
 import os
 import sys
@@ -16,7 +18,7 @@ import streams
 now = datetime.datetime.now
 sys.setrecursionlimit(25000)  # needed for search tree method
 
-TESTING = False
+TESTING = True
 
 # ~~~~~~~~
 # FBM Data
@@ -33,15 +35,19 @@ def setup_data():
 	else:
 		reps = 3
 		hurst_exponents = np.linspace(0.2, 0.8, num=13)
-		chunk_sizes = range(2**12, 2**19 + 1, 2**12)
+		chunk_sizes = range(2**12, 2**18 + 1, 2**12)
 		data_length = 2**20
 
 	experimental_data = []
 
 	for rep in range(reps):
-		for hurst in hurst_exponents:
-			print(f'Generating data for rep {rep} and Hurst exponent {hurst} at {now()}')
-			data = streams.fbm(data_length, hurst=hurst)
+		print(f'Generating data for rep {rep} at {now()}')
+		with Pool() as pool:
+			fbm_data = list(pool.imap(streams.fbm, hurst_exponents))
+			# pool.close()
+			# pool.join()
+		for i, hurst in enumerate(hurst_exponents):
+			data = fbm_data[i]
 			for chunk_size in chunk_sizes:
 				for alg in algs:
 					experimental_data += [{
@@ -100,8 +106,8 @@ def run_experiments(experimental_data):
 			if completed % 50 == 0:
 				print(f'\t\tCompleted {completed} of {total}: {now()}')
 
-		pool.close()
-		pool.join()
+		# pool.close()
+		# pool.join()
 
 def save_outputs(experimental_data):
 	if TESTING:
