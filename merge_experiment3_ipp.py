@@ -3,29 +3,34 @@
 TESTING = True
 
 import os
+import sys
+import csv
+import datetime
+import numpy as np
 import ipyparallel as ipp
 
 slurm_profile_is_available = os.path.exists(os.path.expanduser('~/.ipython/profile_slurm/'))
 c = ipp.Client(profile="slurm" if slurm_profile_is_available else "default")
 v = c[:]
-print(v.apply_sync(os.getcwd))
-
-import sys
-import csv
-import datetime
-import numpy as np
-
-from dt_hvg import hvg as dual_tree_hvg
-from bst_hvg import hvg as binary_search_hvg
-sys.setrecursionlimit(25000)  # needed for bst method to work on unbalanced data
 
 now = datetime.datetime.now
 print(f'Beginning FBM merge experiment: {now()}')
 print(f'Number of parallel tasks: {len(v)}')
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Ensure all engines work with the correct directory
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+v.map_sync(os.chdir, [dir_path] * len(v))
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set up experimental parameters
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+from dt_hvg import hvg as dual_tree_hvg
+from bst_hvg import hvg as binary_search_hvg
+sys.setrecursionlimit(25000)  # needed for bst_hvg to work on unbalanced data
 
 hvg_algorithms = {
 	'dual_tree_hvg': dual_tree_hvg,
@@ -49,10 +54,10 @@ else:
 
 print(f'Beginning data generation: {now()}')
 
-from streams import fbm
-@ipp.require(fbm, data_length=data_length)
+@ipp.require(data_length=data_length)
 def get_data_parallel(hurst):
-	return fbm(data_length, hurst=hurst)
+	import streams
+	return streams.fbm(data_length, hurst=hurst)
 
 fbm_data = v.map_sync(get_data_parallel, hurst_exponents)
 
