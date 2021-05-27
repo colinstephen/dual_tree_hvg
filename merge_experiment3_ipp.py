@@ -11,9 +11,7 @@ import ipyparallel as ipp
 
 slurm_profile_is_available = os.path.exists(os.path.expanduser('~/.ipython/profile_slurm/'))
 c = ipp.Client(profile="slurm" if slurm_profile_is_available else "default")
-dv = c[:]
-v = c.load_balanced_view()
-
+v = c[:]
 
 now = datetime.datetime.now
 print(f'Beginning FBM merge experiment: {now()}')
@@ -24,7 +22,7 @@ print(f'Number of parallel tasks: {len(v)}')
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-dv.map_sync(os.chdir, [dir_path] * len(v))
+v.map_sync(os.chdir, [dir_path] * len(v))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set up experimental parameters
@@ -61,7 +59,7 @@ def get_data_parallel(hurst):
 	import streams
 	return streams.fbm(data_length, hurst=hurst)
 
-fbm_data = dv.map_sync(get_data_parallel, hurst_exponents)
+fbm_data = v.map_sync(get_data_parallel, hurst_exponents)
 
 experimental_data = [
 	{
@@ -115,7 +113,7 @@ def record_run_times_parallel(experiment_params):
 
 print(f'Beginning timings: {now()}')
 
-timings_async = v.map(record_run_times_parallel, experimental_data, chunksize=1)
+timings_async = v.map(record_run_times_parallel, experimental_data)
 
 if TESTING:
 	results_csvfile = 'temp/merge_experiment_fbm_results_TESTING.csv'
