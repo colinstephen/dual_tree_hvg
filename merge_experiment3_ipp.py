@@ -49,7 +49,7 @@ else:
 print(f'Beginning data generation: {now()}')
 
 import streams
-@ipp.require(streams, data_length=data_length)
+@ipp.require(streams.fbm, data_length=data_length)
 def get_data_parallel(hurst):
 	return streams.fbm(data_length, hurst=hurst)
 
