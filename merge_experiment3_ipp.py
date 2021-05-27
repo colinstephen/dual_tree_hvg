@@ -93,18 +93,28 @@ def record_run_times_parallel(experiment_params):
 
 	# compute the small HVGs to be merged
 	hvgs = []
-	for n in range(0, len(data), chunk_size):
-		t0 = time.perf_counter()
-		hvg = hvg_algorithm(data[n:n+chunk_size])
-		hvg_times += [time.perf_counter() - t0]
-		hvgs += [hvg]
+	try:
+		for n in range(0, len(data), chunk_size):
+			t0 = time.perf_counter()
+			hvg = hvg_algorithm(data[n:n+chunk_size])
+			hvg_times += [time.perf_counter() - t0]
+			hvgs += [hvg]
+	except Exception as e:
+		print(f"ERROR building HVGs with algorithm {experiment_params['algorithm']}")
+		print(e)
+		return [-1], [-1], experiment_params
 
 	# then repeatedly merge them together
 	merged = hvgs[0]
-	for hvg in hvgs[1:]:
-		t0 = time.perf_counter()
-		merged += hvg
-		merge_times += [time.perf_counter() - t0]
+	try:
+		for hvg in hvgs[1:]:
+			t0 = time.perf_counter()
+			merged += hvg
+			merge_times += [time.perf_counter() - t0]
+	except Exception as e:
+		print(f"ERROR merging HVGs with algorithm {experiment_params['algorithm']}")
+		print(e)
+		return hvg_times, [-1], experiment_params
 
 	return hvg_times, merge_times, experiment_params
 
