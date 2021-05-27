@@ -147,7 +147,7 @@ with open(results_csvfile, 'w') as f:
 			np.std(merge_times)
 		])
 		count +=1
-		if count % 50 == 0:
+		if count % 25 == 0:
 			print(f'Completed {count} of {total} timings: {now()}')
 
 print(f'Completed all timings: {now()}')
