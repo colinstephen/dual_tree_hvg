@@ -28,7 +28,7 @@ approach.
 
 import sys
 import numpy as np
-sys.setrecursionlimit(2**15)  # needed to avoid crashing on unbalanced sequences
+sys.setrecursionlimit(2**20)  # needed to avoid crashing on unbalanced sequences
 
 
 
