@@ -12,8 +12,7 @@ import ipyparallel as ipp
 
 slurm_profile_is_available = os.path.exists(os.path.expanduser('~/.ipython/profile_slurm/'))
 c = ipp.Client(profile="slurm" if slurm_profile_is_available else "default")
-dv = c[:]
-v = c.load_balanced_view()
+v = c[:]
 
 now = datetime.datetime.now
 print(f'Beginning FBM merge experiment: {now()}')
@@ -24,7 +23,7 @@ print(f'Number of parallel tasks: {len(v)}')
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-dv.map_sync(os.chdir, [dir_path] * len(v))
+v.map_sync(os.chdir, [dir_path] * len(v))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Set up experimental parameters
@@ -61,7 +60,7 @@ def get_data_parallel(hurst):
 	import streams
 	return streams.fbm(data_length, hurst=hurst)
 
-fbm_data = dv.map_sync(get_data_parallel, hurst_exponents)
+fbm_data = v.map_sync(get_data_parallel, hurst_exponents)
 
 experimental_data = [
 	{
@@ -125,8 +124,8 @@ def record_run_times_parallel(experiment_params):
 
 print(f'Beginning timings: {now()}')
 
-tasks = [v.apply(record_run_times_parallel, data) for data in experimental_data]
-retrieved = [False] * len(tasks)
+tasks = v.map(record_run_times_parallel, experimental_data)
+results = iter(tasks)
 
 if TESTING:
 	results_csvfile = 'temp/merge_experiment_fbm_results_TESTING.csv'
@@ -152,31 +151,28 @@ with open(results_csvfile, 'w') as f:
 	count = 0
 	total = len(experimental_data)
 
-	while not all(retrieved):
-		for ii, task in enumerate(tasks):
-			if task.ready() and not retrieved[ii]:
-				try:
-					hvg_times, merge_times, experiment_params = task.get()
-				except Exception as e:
-					print(f"Task {ii} failed with: {e}")
-				else:
-					writer.writerow([
-						experiment_params['hurst_exponent'],
-						experiment_params['algorithm'],
-						experiment_params['chunk_size'],
-						np.sum(hvg_times),
-						np.mean(hvg_times),
-						np.median(hvg_times),
-						np.std(hvg_times),
-						np.sum(merge_times),
-						np.mean(merge_times),
-						np.median(merge_times),
-						np.std(merge_times)
-					])
-					count +=1
-					if count % 25 == 0:
-						print(f'Completed {count} of {total} timings: {now()}')
-				retrieved[ii] = True
-		time.sleep(1)
+	while count < total:
+		try:
+			hvg_times, merge_times, experiment_params = next(results)
+		except Exception as e:
+			print(f"Runtime task failed with: {e}")
+		else:
+			writer.writerow([
+				experiment_params['hurst_exponent'],
+				experiment_params['algorithm'],
+				experiment_params['chunk_size'],
+				np.sum(hvg_times),
+				np.mean(hvg_times),
+				np.median(hvg_times),
+				np.std(hvg_times),
+				np.sum(merge_times),
+				np.mean(merge_times),
+				np.median(merge_times),
+				np.std(merge_times)
+			])
+		finally:
+			count +=1
+			if count % 25 == 0:
+				print(f'Completed {count} of {total} timings: {now()}')
 
 print(f'Completed all timings: {now()}')
