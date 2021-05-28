@@ -5,6 +5,7 @@ TESTING = True
 import os
 import sys
 import csv
+import time
 import datetime
 import numpy as np
 import ipyparallel as ipp
@@ -124,8 +125,8 @@ def record_run_times_parallel(experiment_params):
 
 print(f'Beginning timings: {now()}')
 
-timings_AsyncMapResult = v.map(record_run_times_parallel, experimental_data, chunksize=1, ordered=False)
-timings_iterable = iter(timings_AsyncMapResult)  # needed to call next() method manually
+tasks = [v.apply(record_run_times_parallel, data) for data in experimental_data]
+retrieved = [False] * len(tasks)
 
 if TESTING:
 	results_csvfile = 'temp/merge_experiment_fbm_results_TESTING.csv'
@@ -151,31 +152,31 @@ with open(results_csvfile, 'w') as f:
 	count = 0
 	total = len(experimental_data)
 
-	while True:
-		try:
-			hvg_times, merge_times, experiment_params = next(timings_iterable)
-		except ipp.CompositeError as e:
-			print(f"ERROR retrieving times for experiment from engine")
-			print(e)
-			continue
-		except StopIteration:
-			break
-		else:
-			writer.writerow([
-				experiment_params['hurst_exponent'],
-				experiment_params['algorithm'],
-				experiment_params['chunk_size'],
-				np.sum(hvg_times),
-				np.mean(hvg_times),
-				np.median(hvg_times),
-				np.std(hvg_times),
-				np.sum(merge_times),
-				np.mean(merge_times),
-				np.median(merge_times),
-				np.std(merge_times)
-			])
-			count +=1
-			if count % 25 == 0:
-				print(f'Completed {count} of {total} timings: {now()}')
+	while not all(retrieved):
+		for ii, task in enumerate(tasks):
+			if task.ready() and not retrieved[ii]:
+				try:
+					hvg_times, merge_times, experiment_params = task.get()
+				except Exception as e:
+					print(f"Task {ii} failed with: {e}")
+				else:
+					writer.writerow([
+						experiment_params['hurst_exponent'],
+						experiment_params['algorithm'],
+						experiment_params['chunk_size'],
+						np.sum(hvg_times),
+						np.mean(hvg_times),
+						np.median(hvg_times),
+						np.std(hvg_times),
+						np.sum(merge_times),
+						np.mean(merge_times),
+						np.median(merge_times),
+						np.std(merge_times)
+					])
+					count +=1
+					if count % 25 == 0:
+						print(f'Completed {count} of {total} timings: {now()}')
+				retrieved[ii] = True
+		time.sleep(1)
 
 print(f'Completed all timings: {now()}')
