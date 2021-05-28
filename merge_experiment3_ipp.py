@@ -13,6 +13,7 @@ import ipyparallel as ipp
 slurm_profile_is_available = os.path.exists(os.path.expanduser('~/.ipython/profile_slurm/'))
 c = ipp.Client(profile="slurm" if slurm_profile_is_available else "default")
 v = c[:]
+lbv = c.load_balanced_view()
 
 now = datetime.datetime.now
 print(f'Beginning FBM merge experiment: {now()}')
@@ -124,7 +125,7 @@ def record_run_times_parallel(experiment_params):
 
 print(f'Beginning timings: {now()}')
 
-tasks = v.map(record_run_times_parallel, experimental_data)
+tasks = lbv.map(record_run_times_parallel, experimental_data, chunksize=1, ordered=False)
 results = iter(tasks)
 
 if TESTING:
@@ -151,12 +152,14 @@ with open(results_csvfile, 'w') as f:
 	count = 0
 	total = len(experimental_data)
 
-	while count < total:
-		try:
-			hvg_times, merge_times, experiment_params = next(results)
-		except Exception as e:
-			print(f"Runtime task failed with: {e}")
-		else:
+while count < total:
+	try:
+		hvg_times, merge_times, experiment_params = next(results)
+	except Exception as e:
+		print(f"Runtime task failed with: {e}")
+	else:
+		with open(results_csvfile, 'a') as f:
+			writer = csv.writer(f)
 			writer.writerow([
 				experiment_params['hurst_exponent'],
 				experiment_params['algorithm'],
@@ -170,9 +173,9 @@ with open(results_csvfile, 'w') as f:
 				np.median(merge_times),
 				np.std(merge_times)
 			])
-		finally:
-			count +=1
-			if count % 25 == 0:
-				print(f'Completed {count} of {total} timings: {now()}')
+	finally:
+		count +=1
+		if count % 25 == 0:
+			print(f'Completed {count} of {total} timings: {now()}')
 
 print(f'Completed all timings: {now()}')
