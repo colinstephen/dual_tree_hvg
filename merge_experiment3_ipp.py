@@ -80,11 +80,14 @@ print(f'Completed data generation: {now()}')
 # Parallel function to time HVG merging
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-@ipp.require(hvg_algorithms=hvg_algorithms)
+@ipp.require(hvg_algorithms=hvg_algorithms, hpc=slurm_profile_is_available)
 def record_run_times_parallel(experiment_params):
 	import time
-	import sys
-	sys.setrecursionlimit(2**20)
+	if hpc:
+		import sys
+		import resource
+		sys.setrecursionlimit(2**25)
+		resource.setrlimit(resource.RLIMIT_STACK, (2**25,2**29))
 	
 	data = experiment_params['data']
 	chunk_size = experiment_params['chunk_size']
