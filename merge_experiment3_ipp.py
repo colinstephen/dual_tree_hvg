@@ -32,7 +32,6 @@ v.map_sync(os.chdir, [dir_path] * len(v))
 
 from dt_hvg import hvg as dual_tree_hvg
 from bst_hvg import hvg as binary_search_hvg
-sys.setrecursionlimit(2**20)  # needed for bst_hvg to work on unbalanced data
 
 hvg_algorithms = {
 	'dual_tree_hvg': dual_tree_hvg,
@@ -84,6 +83,8 @@ print(f'Completed data generation: {now()}')
 @ipp.require(hvg_algorithms=hvg_algorithms)
 def record_run_times_parallel(experiment_params):
 	import time
+	import sys
+	sys.setrecursionlimit(2**20)
 	
 	data = experiment_params['data']
 	chunk_size = experiment_params['chunk_size']
@@ -149,14 +150,14 @@ with open(results_csvfile, 'w') as f:
 		'merge_std'
 	])
 
-	count = 0
-	total = len(experimental_data)
+count = 0
+total = len(experimental_data)
 
 while count < total:
 	try:
 		hvg_times, merge_times, experiment_params = next(results)
 	except Exception as e:
-		print(f"Runtime task failed with: {e}")
+		print(f"Task failed. Error: {e or 'none'}")
 	else:
 		with open(results_csvfile, 'a') as f:
 			writer = csv.writer(f)
