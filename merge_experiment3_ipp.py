@@ -154,12 +154,12 @@ with open(results_csvfile, 'w') as f:
 	while True:
 		try:
 			hvg_times, merge_times, experiment_params = next(timings_iterable)
-		except StopIteration:
-			break
 		except ipp.CompositeError as e:
 			print(f"ERROR retrieving times for experiment from engine")
 			print(e)
 			continue
+		except StopIteration:
+			break
 		else:
 			writer.writerow([
 				experiment_params['hurst_exponent'],
