@@ -83,9 +83,13 @@ print(f'Completed data generation: {now()}')
 @ipp.require(hvg_algorithms=hvg_algorithms, hpc=slurm_profile_is_available)
 def record_run_times_parallel(experiment_params):
 	import time
-	if hpc:
+	if hpc:  # type: ignore
 		import sys
 		import resource
+		# bst algorithm crashes due to excessive recursion depth on unbalanced data
+		# increase the recursion limit to ensure it can build hvgs with our test data
+		# also increase the stack limit to avoid (reproducible!) segfaults during deep recursions
+		# not sure which limit values are best but 2x higher than sequence length seems to work
 		sys.setrecursionlimit(2**25)
 		resource.setrlimit(resource.RLIMIT_STACK, (2**25,2**29))
 	
