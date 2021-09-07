@@ -16,7 +16,7 @@ from bst_hvg import hvg as binary_search_hvg
 import streams
 
 now = datetime.datetime.now
-sys.setrecursionlimit(25000)  # needed for search tree method
+sys.setrecursionlimit(2**19)  # needed for search tree method
 
 TESTING = True
 
