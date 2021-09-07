@@ -5,8 +5,9 @@ Implementation of worst-case O(n) online scalable algorithms for constructing HV
 
 Includes code to run numerical benchmarks to compare the proposed method of _dual tree horizontal visibility_ with two previous approaches: the binary search tree method [1] and the divide and conquer method [2].
 
-[Paper proposing the method](paper.pdf)
+[Paper proposing the method.](paper.pdf)
 
+[Code implementing dual tree horizontal visibility graphs (DTHVGs).](dt_hvg.py)
 
 ### References
 
