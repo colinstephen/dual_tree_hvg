@@ -1,2 +1,3 @@
 *.pyc
 *_TESTING_*
+slurm-*.out

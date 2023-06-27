@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-TESTING = True
+TESTING = False
 
 import os
 import sys
@@ -44,9 +44,9 @@ if TESTING:
 	chunk_sizes = range(2**5, 2**9 + 1, 2**5)
 	data_length = 2**10
 else:
-	reps = 3
+	reps = 10
 	hurst_exponents = list(np.linspace(0.2, 0.8, num=13)) * reps
-	chunk_sizes = range(2**12, 2**18 + 1, 2**12)
+	chunk_sizes = range(2**15, 2**18 + 1, 2**12)
 	data_length = 2**20
 
 # ~~~~~~~~~~~~~~~~~
