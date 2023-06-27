@@ -1,10 +1,14 @@
-# Efficient horizontal visibility graphs using merge trees
+# A Scalable Linear-Time Algorithm for Horizontal Visibility Graph Construction Over Long Sequences
 
+_Submitted to [IEEE International Conference on Big Data (IEEE BigData 2021)](http://bigdataieee.org/BigData2021/)_
 
-Implementation of $O(n)$ online algorithms for constructing HVGs and for merging existing ones.
+Implementation of worst-case <img src="https://render.githubusercontent.com/render/math?math=O(n)"> online scalable algorithms for constructing HVGs.
 
 Includes code to run numerical benchmarks to compare the proposed method of _dual tree horizontal visibility_ with two previous approaches: the binary search tree method [1] and the divide and conquer method [2].
 
+[Paper proposing the method.](paper.pdf)
+
+[Code implementing dual tree horizontal visibility graphs (DTHVGs).](dt_hvg.py)
 
 ### References
 
